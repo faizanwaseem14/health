@@ -1,0 +1,8 @@
+# Python packages needed to run the MedVault backend.
+# Install them with:  pip install -r requirements.txt
+#
+# Kept minimal for Task 1. More packages (SQLAlchemy, Alembic, boto3,
+# firebase-admin, etc.) get added in later tasks as we actually use them.
+
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
