@@ -1,0 +1,10 @@
+# Developer tools - NOT needed to run the app, only to develop it
+# (linting, formatting, running tests).
+#
+# Install with:  pip install -r requirements.txt -r requirements-dev.txt
+# (tests import the real app, so requirements.txt is needed too)
+
+ruff==0.8.4
+black==24.10.0
+pytest==8.3.4
+httpx==0.28.1

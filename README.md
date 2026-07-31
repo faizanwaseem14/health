@@ -23,6 +23,23 @@ uvicorn app.main:app --reload
 Then open http://127.0.0.1:8000/ in your browser. You should see a small
 JSON message confirming the server is running.
 
+## Dev tools (backend)
+
+Install once (in addition to the steps above):
+
+```bash
+cd backend
+pip install -r requirements-dev.txt
+```
+
+Then, from `backend/`:
+
+```bash
+ruff check .      # lint - finds likely bugs (unused imports, etc.)
+black .           # format - auto-fixes code style
+pytest            # run the test suite
+```
+
 ## Running the frontend
 
 ```bash

@@ -1,0 +1,29 @@
+# Configuration for our dev tools. Having it here means everyone (and
+# every AI-generated change) runs the exact same rules with the exact
+# same short commands - no flags to remember.
+
+[tool.black]
+# black = the formatter. It rewrites code style automatically (spacing,
+# quotes, line breaks) so every file looks the same regardless of who
+# (or what) wrote it. Run it with: black .
+line-length = 88
+target-version = ["py311"]
+
+[tool.ruff]
+# ruff = the linter. It reads code WITHOUT changing it and points out
+# likely bugs (e.g. unused imports, undefined names). Run it with:
+# ruff check .
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+# E/F = pycodestyle errors + pyflakes (real bugs, unused imports, etc.)
+# I   = import sorting (keeps imports in a consistent order)
+select = ["E", "F", "I"]
+
+[tool.pytest.ini_options]
+# pytest = the test runner. Run it with: pytest
+testpaths = ["tests"]
+# Makes sure "app" (backend/app) can always be imported from test files,
+# no matter where pytest is invoked from.
+pythonpath = ["."]
