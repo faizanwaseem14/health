@@ -13,6 +13,13 @@ server boots and responds to a request. Later tasks will add:
 
 from fastapi import FastAPI
 
+# Importing app.config runs our environment-variable check immediately,
+# before the server even starts. If a required key (Neon, Firebase, R2,
+# ...) is missing from your .env file, the app refuses to start and tells
+# you exactly what's missing, instead of crashing later with a confusing
+# error deep inside some unrelated feature.
+import app.config  # noqa: F401 (imported for this validation side-effect)
+
 # Create the FastAPI application object. Everything (routes, middleware,
 # error handlers) gets attached to this single `app` object.
 app = FastAPI(title="MedVault API")
