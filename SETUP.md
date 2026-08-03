@@ -26,19 +26,46 @@ copy the value it gives you, and paste it into `backend/.env` (copy
      `backend/.env`.
 
 - [ ] **Cloudflare R2 — private file storage**
-  1. Sign up / log in at https://dash.cloudflare.com
-  2. Go to R2 -> create a bucket (keep it private — do not enable public
-     access).
-  3. Go to R2 -> "Manage API tokens" -> create a token with read/write
-     access scoped to that bucket.
-  4. Paste the values into `backend/.env`:
-     - `R2_ACCOUNT_ID`
-     - `R2_ACCESS_KEY_ID`
-     - `R2_SECRET_ACCESS_KEY`
-     - `R2_BUCKET_NAME`
-     - `R2_ENDPOINT_URL` — set this to
-       `https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com` (swap in your
-       real account ID).
+
+  R2 is where uploaded report files (PDFs, photos) will live. The bucket
+  must stay **private** — we never enable public access; the app reaches
+  files only through short-lived signed URLs (built in Task 7).
+
+  1. Sign up / log in at https://dash.cloudflare.com (a free account is
+     fine). If this is your first time using R2, Cloudflare may ask you
+     to "enable R2" and add a payment method to your account before it
+     lets you create a bucket — R2 still has a generous free tier, this
+     is just Cloudflare's account-level requirement, not something this
+     app needs you to pay for.
+  2. In the left sidebar, click **R2 Object Storage**.
+  3. Click **Create bucket**.
+     - Name it anything, e.g. `medvault-reports`.
+     - Leave location as "Automatic".
+     - Leave public access as its default (**disabled**) — do NOT turn
+       on "Allow Public Access" for this bucket.
+  4. Find your **Account ID**: it's shown on the right-hand side of the
+     R2 Object Storage overview page (and also on the main Cloudflare
+     dashboard). Copy it into `R2_ACCOUNT_ID` in `backend/.env`.
+  5. Create an API token scoped to just this bucket:
+     - From the R2 Object Storage page, click **Manage API tokens** (or
+       **API** in the sidebar) -> **Create API token**.
+     - Permissions: **Object Read & Write**.
+     - Scope it to the one bucket you just created (not "all buckets"),
+       so this token can't touch anything else in your account.
+     - Click **Create API Token**.
+  6. Cloudflare will show you the credentials **once** — copy them
+     immediately into `backend/.env`:
+     - **Access Key ID** -> `R2_ACCESS_KEY_ID`
+     - **Secret Access Key** -> `R2_SECRET_ACCESS_KEY`
+  7. Set the remaining two values in `backend/.env`:
+     - `R2_BUCKET_NAME` — exactly the bucket name you chose in step 3.
+     - `R2_ENDPOINT_URL` — Cloudflare shows this on the same token
+       confirmation screen (sometimes labeled "S3 API" or "Endpoint").
+       It normally looks like
+       `https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com` — use the
+       *exact* one Cloudflare shows you, since it can differ slightly if
+       you picked a specific data-location jurisdiction (e.g. an `eu.`
+       prefix).
 
 ## Not needed until Day 2 (safe to skip for now)
 
