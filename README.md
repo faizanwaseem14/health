@@ -40,6 +40,35 @@ black .           # format - auto-fixes code style
 pytest            # run the test suite
 ```
 
+## Database migrations (Alembic)
+
+The database schema (all 11 tables) lives as version-controlled files in
+`backend/alembic/versions/`, not as something you build by hand in Neon.
+
+Create the tables in your own Neon database:
+
+```bash
+cd backend
+source .venv/bin/activate
+pip install -r requirements.txt
+alembic upgrade head
+```
+
+This reads `DATABASE_URL` from your `backend/.env`, so make sure that's
+filled in first (see `SETUP.md`). If it worked, you'll see log lines
+ending in `Running upgrade  -> ..., create initial schema`.
+
+Later, whenever a model in `backend/app/models/` changes, generate a new
+migration with:
+
+```bash
+alembic revision --autogenerate -m "describe the change"
+```
+
+Always read the generated file in `alembic/versions/` before running
+`alembic upgrade head` - autogenerate is very good but not perfect, and
+should be treated as a draft to review, not something to trust blindly.
+
 ## Running the frontend
 
 ```bash
