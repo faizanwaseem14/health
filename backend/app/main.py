@@ -13,7 +13,7 @@ server boots and responds to a request. Later tasks will add:
 
 import logging
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -23,7 +23,9 @@ from sqlalchemy.exc import SQLAlchemyError
 # you exactly what's missing, instead of crashing later with a confusing
 # error deep inside some unrelated feature.
 import app.config  # noqa: F401 (imported for this validation side-effect)
+from app.auth.dependencies import get_current_user
 from app.database import check_database_connection
+from app.models import User
 
 logger = logging.getLogger("medvault")
 
@@ -61,3 +63,15 @@ def health_check():
         )
 
     return {"status": "ok", "database": "connected"}
+
+
+@app.get("/auth/me")
+def read_current_user(user: User = Depends(get_current_user)):
+    """
+    A minimal PROTECTED route: requires a valid Firebase ID token in the
+    "Authorization: Bearer <token>" header. Proves Task 9's login flow
+    end to end - verify the token, then look up (or create) the matching
+    MedVault user. A nicer response shape and richer error handling come
+    in Tasks 15-16.
+    """
+    return {"id": str(user.id), "phone_number": user.phone_number}
