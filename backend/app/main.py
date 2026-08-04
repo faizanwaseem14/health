@@ -31,6 +31,7 @@ from app.auth.recovery import (
     generate_recovery_code,
     redeem_recovery_code,
 )
+from app.core.audit import record_audit_event
 from app.database import check_database_connection
 from app.models import User
 from app.schemas.auth import OtpRequestPayload, RecoveryCodeRedeemPayload
@@ -98,7 +99,11 @@ def request_otp(
 
 
 @app.get("/auth/me")
-def read_current_user(user: User = Depends(get_current_user)):
+def read_current_user(
+    request: Request,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """
     A minimal PROTECTED route: requires a valid Firebase ID token in the
     "Authorization: Bearer <token>" header. Proves Task 9's login flow
@@ -106,6 +111,15 @@ def read_current_user(user: User = Depends(get_current_user)):
     MedVault user. A nicer response shape and richer error handling come
     in Tasks 15-16.
     """
+    record_audit_event(
+        db,
+        action="view_own_profile",
+        ip_address=request.client.host if request.client else "unknown",
+        user_id=user.id,
+        resource_type="user",
+        resource_id=user.id,
+        user_agent=request.headers.get("user-agent"),
+    )
     return {"id": str(user.id), "phone_number": user.phone_number}
 
 
