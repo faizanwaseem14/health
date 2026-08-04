@@ -5,6 +5,7 @@ database connection) is alive. Nothing here needs a login.
 
 from fastapi import APIRouter
 
+from app.core.responses import success_response
 from app.database import check_database_connection
 
 router = APIRouter()
@@ -17,7 +18,7 @@ def read_root():
 
     Visiting http://127.0.0.1:8000/ in a browser should show this JSON.
     """
-    return {"service": "MedVault API", "status": "running"}
+    return success_response({"service": "MedVault API", "status": "running"})
 
 
 @router.get("/health")
@@ -33,4 +34,4 @@ def health_check():
     exposing connection details, and this route stays simple.
     """
     check_database_connection()
-    return {"status": "ok", "database": "connected"}
+    return success_response({"database": "connected"})

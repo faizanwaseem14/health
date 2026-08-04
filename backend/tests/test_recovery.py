@@ -86,7 +86,7 @@ def test_redeem_recovery_code_route_accepts_a_valid_code():
         )
 
     assert response.status_code == 200
-    assert response.json()["phone_number"] == "+15551234567"
+    assert response.json()["data"]["phone_number"] == "+15551234567"
 
 
 def test_redeem_recovery_code_route_rejects_missing_fields():

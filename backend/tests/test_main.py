@@ -19,4 +19,7 @@ def test_root_returns_running_status():
     response = client.get("/")
 
     assert response.status_code == 200
-    assert response.json() == {"service": "MedVault API", "status": "running"}
+    assert response.json() == {
+        "status": "success",
+        "data": {"service": "MedVault API", "status": "running"},
+    }

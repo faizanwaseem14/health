@@ -16,6 +16,7 @@ from app.auth.dependencies import get_current_user, get_db
 from app.auth.rate_limit import check_and_record_otp_request
 from app.auth.recovery import generate_recovery_code, redeem_recovery_code
 from app.core.audit import record_audit_event
+from app.core.responses import success_response
 from app.models import User
 from app.schemas.auth import OtpRequestPayload, RecoveryCodeRedeemPayload
 
@@ -36,7 +37,7 @@ def request_otp(
     """
     client_ip = request.client.host if request.client else None
     check_and_record_otp_request(payload.phone_number, db, ip_address=client_ip)
-    return {"status": "ok"}
+    return success_response()
 
 
 @router.get("/me")
@@ -49,7 +50,7 @@ def read_current_user(
     PROTECTED route: requires a valid Firebase ID token in the
     "Authorization: Bearer <token>" header. Proves Task 9's login flow
     end to end - verify the token, then look up (or create) the matching
-    MedVault user. A nicer response shape comes in Task 16.
+    MedVault user.
     """
     record_audit_event(
         db,
@@ -60,7 +61,7 @@ def read_current_user(
         resource_id=user.id,
         user_agent=request.headers.get("user-agent"),
     )
-    return {"id": str(user.id), "phone_number": user.phone_number}
+    return success_response({"id": str(user.id), "phone_number": user.phone_number})
 
 
 @router.post("/recovery/generate")
@@ -74,7 +75,7 @@ def generate_recovery_code_route(
     Generating a new code invalidates any earlier one.
     """
     code = generate_recovery_code(user, db)
-    return {"recovery_code": code}
+    return success_response({"recovery_code": code})
 
 
 @router.post("/recovery/redeem")
@@ -90,4 +91,4 @@ def redeem_recovery_code_route(
     user = redeem_recovery_code(
         payload.phone_number, payload.recovery_code, db, ip_address=client_ip
     )
-    return {"id": str(user.id), "phone_number": user.phone_number}
+    return success_response({"id": str(user.id), "phone_number": user.phone_number})
