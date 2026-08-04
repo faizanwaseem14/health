@@ -31,7 +31,7 @@ def test_rate_limit_matches_the_spec_of_5_per_hour():
 
 
 def test_otp_request_allowed_returns_200():
-    with patch("app.main.check_and_record_otp_request", return_value=None):
+    with patch("app.routers.auth.check_and_record_otp_request", return_value=None):
         response = client.post(
             "/auth/otp/request", json={"phone_number": "+15551234567"}
         )
@@ -41,7 +41,7 @@ def test_otp_request_allowed_returns_200():
 
 def test_otp_request_blocked_returns_429():
     with patch(
-        "app.main.check_and_record_otp_request",
+        "app.routers.auth.check_and_record_otp_request",
         side_effect=OtpRateLimitExceededError("too many"),
     ):
         response = client.post(

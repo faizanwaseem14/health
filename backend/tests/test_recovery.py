@@ -62,7 +62,7 @@ def test_generate_recovery_code_route_requires_login():
 
 def test_redeem_recovery_code_route_rejects_invalid_code():
     with patch(
-        "app.main.redeem_recovery_code",
+        "app.routers.auth.redeem_recovery_code",
         side_effect=RecoveryCodeInvalidError("Invalid phone number or recovery code."),
     ):
         response = client.post(
@@ -76,7 +76,7 @@ def test_redeem_recovery_code_route_rejects_invalid_code():
 def test_redeem_recovery_code_route_accepts_a_valid_code():
     fake_user = User(id=uuid.uuid4(), phone_number="+15551234567")
 
-    with patch("app.main.redeem_recovery_code", return_value=fake_user):
+    with patch("app.routers.auth.redeem_recovery_code", return_value=fake_user):
         response = client.post(
             "/auth/recovery/redeem",
             json={
