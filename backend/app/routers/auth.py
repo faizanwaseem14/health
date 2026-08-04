@@ -2,19 +2,19 @@
 Auth-related routes: logging in (Task 9), OTP rate limiting (Task 10),
 and backup recovery codes (Task 11). All grouped under the "/auth"
 prefix so it's obvious at a glance which routes need identity checks.
+
+None of these routes catch their own errors anymore (Task 15) - the
+global error handler in app/core/errors.py turns
+OtpRateLimitExceededError / RecoveryCodeInvalidError / database errors
+into the right status code and a clean message everywhere, once.
 """
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user, get_db
-from app.auth.rate_limit import OtpRateLimitExceededError, check_and_record_otp_request
-from app.auth.recovery import (
-    RecoveryCodeInvalidError,
-    generate_recovery_code,
-    redeem_recovery_code,
-)
+from app.auth.rate_limit import check_and_record_otp_request
+from app.auth.recovery import generate_recovery_code, redeem_recovery_code
 from app.core.audit import record_audit_event
 from app.models import User
 from app.schemas.auth import OtpRequestPayload, RecoveryCodeRedeemPayload
@@ -35,14 +35,7 @@ def request_otp(
     Firebase ever sends a text.
     """
     client_ip = request.client.host if request.client else None
-    try:
-        check_and_record_otp_request(payload.phone_number, db, ip_address=client_ip)
-    except OtpRateLimitExceededError as error:
-        return JSONResponse(
-            status_code=429,
-            content={"status": "error", "detail": str(error)},
-        )
-
+    check_and_record_otp_request(payload.phone_number, db, ip_address=client_ip)
     return {"status": "ok"}
 
 
@@ -56,8 +49,7 @@ def read_current_user(
     PROTECTED route: requires a valid Firebase ID token in the
     "Authorization: Bearer <token>" header. Proves Task 9's login flow
     end to end - verify the token, then look up (or create) the matching
-    MedVault user. A nicer response shape and richer error handling come
-    in Tasks 15-16.
+    MedVault user. A nicer response shape comes in Task 16.
     """
     record_audit_event(
         db,
@@ -95,14 +87,7 @@ def redeem_recovery_code_route(
     logged, whether it succeeds or fails.
     """
     client_ip = request.client.host if request.client else None
-    try:
-        user = redeem_recovery_code(
-            payload.phone_number, payload.recovery_code, db, ip_address=client_ip
-        )
-    except RecoveryCodeInvalidError as error:
-        return JSONResponse(
-            status_code=401,
-            content={"status": "error", "detail": str(error)},
-        )
-
+    user = redeem_recovery_code(
+        payload.phone_number, payload.recovery_code, db, ip_address=client_ip
+    )
     return {"id": str(user.id), "phone_number": user.phone_number}

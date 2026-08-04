@@ -17,11 +17,17 @@ from fastapi import FastAPI
 # you exactly what's missing, instead of crashing later with a confusing
 # error deep inside some unrelated feature.
 import app.config  # noqa: F401 (imported for this validation side-effect)
+from app.core.errors import register_exception_handlers
 from app.routers import auth, health
 
 # Create the FastAPI application object. Everything (routes, middleware,
 # error handlers) gets attached to this single `app` object.
 app = FastAPI(title="MedVault API")
+
+# Registers the global error handlers (Task 15) - every route below
+# automatically gets clear, structured errors with no internals leaked,
+# without needing its own try/except for these cases.
+register_exception_handlers(app)
 
 # health.router holds "/" and "/health" (both public).
 # auth.router holds everything under "/auth/..." (a mix of public and
