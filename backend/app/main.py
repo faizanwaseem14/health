@@ -13,9 +13,10 @@ server boots and responds to a request. Later tasks will add:
 
 import logging
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 # Importing app.config runs our environment-variable check immediately,
 # before the server even starts. If a required key (Neon, Firebase, R2,
@@ -23,9 +24,11 @@ from sqlalchemy.exc import SQLAlchemyError
 # you exactly what's missing, instead of crashing later with a confusing
 # error deep inside some unrelated feature.
 import app.config  # noqa: F401 (imported for this validation side-effect)
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import get_current_user, get_db
+from app.auth.rate_limit import OtpRateLimitExceededError, check_and_record_otp_request
 from app.database import check_database_connection
 from app.models import User
+from app.schemas.auth import OtpRequestPayload
 
 logger = logging.getLogger("medvault")
 
@@ -63,6 +66,30 @@ def health_check():
         )
 
     return {"status": "ok", "database": "connected"}
+
+
+@app.post("/auth/otp/request")
+def request_otp(
+    payload: OtpRequestPayload, request: Request, db: Session = Depends(get_db)
+):
+    """
+    Called by the frontend BEFORE it asks Firebase to text a one-time
+    code to this phone number. This does NOT send any SMS itself - that
+    stays Firebase's job, on the frontend, on a later day. All this route
+    does is check (and record) whether this phone number has requested
+    too many codes recently, so we can say no before Firebase ever sends
+    a text.
+    """
+    client_ip = request.client.host if request.client else None
+    try:
+        check_and_record_otp_request(payload.phone_number, db, ip_address=client_ip)
+    except OtpRateLimitExceededError as error:
+        return JSONResponse(
+            status_code=429,
+            content={"status": "error", "detail": str(error)},
+        )
+
+    return {"status": "ok"}
 
 
 @app.get("/auth/me")
