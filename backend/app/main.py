@@ -26,9 +26,14 @@ from sqlalchemy.orm import Session
 import app.config  # noqa: F401 (imported for this validation side-effect)
 from app.auth.dependencies import get_current_user, get_db
 from app.auth.rate_limit import OtpRateLimitExceededError, check_and_record_otp_request
+from app.auth.recovery import (
+    RecoveryCodeInvalidError,
+    generate_recovery_code,
+    redeem_recovery_code,
+)
 from app.database import check_database_connection
 from app.models import User
-from app.schemas.auth import OtpRequestPayload
+from app.schemas.auth import OtpRequestPayload, RecoveryCodeRedeemPayload
 
 logger = logging.getLogger("medvault")
 
@@ -101,4 +106,41 @@ def read_current_user(user: User = Depends(get_current_user)):
     MedVault user. A nicer response shape and richer error handling come
     in Tasks 15-16.
     """
+    return {"id": str(user.id), "phone_number": user.phone_number}
+
+
+@app.post("/auth/recovery/generate")
+def generate_recovery_code_route(
+    user: User = Depends(get_current_user), db: Session = Depends(get_db)
+):
+    """
+    PROTECTED route: an already-logged-in user asks for a backup
+    recovery code. Returns the real code exactly once - after this
+    response, only its hash is stored, so save it somewhere safe now.
+    Generating a new code invalidates any earlier one.
+    """
+    code = generate_recovery_code(user, db)
+    return {"recovery_code": code}
+
+
+@app.post("/auth/recovery/redeem")
+def redeem_recovery_code_route(
+    payload: RecoveryCodeRedeemPayload, request: Request, db: Session = Depends(get_db)
+):
+    """
+    PUBLIC route: lets someone who's lost access to their phone prove
+    who they are with a saved recovery code instead. Every attempt is
+    logged, whether it succeeds or fails.
+    """
+    client_ip = request.client.host if request.client else None
+    try:
+        user = redeem_recovery_code(
+            payload.phone_number, payload.recovery_code, db, ip_address=client_ip
+        )
+    except RecoveryCodeInvalidError as error:
+        return JSONResponse(
+            status_code=401,
+            content={"status": "error", "detail": str(error)},
+        )
+
     return {"id": str(user.id), "phone_number": user.phone_number}
