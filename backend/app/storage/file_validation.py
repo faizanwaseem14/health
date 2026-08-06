@@ -15,9 +15,9 @@ identifies a file too. We check those bytes ourselves.
 
 from fastapi import UploadFile
 
-# 10 MB, in bytes. Named here once instead of a raw number scattered
+# 25 MB, in bytes. Named here once instead of a raw number scattered
 # through the code.
-MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024
+MAX_UPLOAD_SIZE_BYTES = 25 * 1024 * 1024
 
 _JPEG_SIGNATURE = b"\xff\xd8\xff"
 _PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"

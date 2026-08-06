@@ -47,7 +47,7 @@ async def upload_report(
 ):
     """
     PROTECTED route: uploads one report file (JPEG/PNG/HEIC/PDF, max
-    10MB) under a profile the logged-in user owns.
+    25MB) under a profile the logged-in user owns.
 
     What this does NOT do, on purpose: read the file's contents, run
     OCR, or call any AI. It validates the file is real and safe, stores

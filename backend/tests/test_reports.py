@@ -58,13 +58,13 @@ def test_upload_requires_login():
     assert response.status_code == 401
 
 
-def test_upload_rejects_a_file_over_10mb():
+def test_upload_rejects_a_file_over_25mb():
     user = User(id=uuid.uuid4(), phone_number="+15551234567")
     profile = Profile(id=uuid.uuid4(), user_id=user.id, full_name="Alice")
     _override_auth(user, profile)
 
     try:
-        oversized = b"\x89PNG\r\n\x1a\n" + (b"0" * (11 * 1024 * 1024))
+        oversized = b"\x89PNG\r\n\x1a\n" + (b"0" * (26 * 1024 * 1024))
         response = client.post(
             f"/profiles/{profile.id}/reports",
             files={"file": ("photo.png", oversized, "image/png")},
