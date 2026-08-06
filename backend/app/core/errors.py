@@ -20,6 +20,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.auth.rate_limit import OtpRateLimitExceededError
 from app.auth.recovery import RecoveryCodeInvalidError
+from app.storage.file_validation import FileTooLargeError, InvalidFileTypeError
 
 logger = logging.getLogger("medvault")
 
@@ -62,6 +63,14 @@ def register_exception_handlers(app: FastAPI) -> None:
         request: Request, exc: RecoveryCodeInvalidError
     ):
         return _error_response(status.HTTP_401_UNAUTHORIZED, str(exc))
+
+    @app.exception_handler(FileTooLargeError)
+    async def handle_file_too_large(request: Request, exc: FileTooLargeError):
+        return _error_response(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, str(exc))
+
+    @app.exception_handler(InvalidFileTypeError)
+    async def handle_invalid_file_type(request: Request, exc: InvalidFileTypeError):
+        return _error_response(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, str(exc))
 
     @app.exception_handler(SQLAlchemyError)
     async def handle_database_error(request: Request, exc: SQLAlchemyError):

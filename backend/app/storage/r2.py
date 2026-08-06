@@ -6,15 +6,22 @@ R2 is "S3-compatible", meaning it understands the same API Amazon S3
 does - so we can use boto3 (AWS's official Python library) to talk to
 it, just pointed at Cloudflare's endpoint instead of Amazon's.
 
-Nothing in this file uploads a file itself. Instead, `generate_upload_url`
-hands back a short-lived "signed URL" - a temporary, one-time-use link
-that will later let the FRONTEND upload a file directly to R2, without
-the file ever passing through our backend server. The bucket itself has
-no public access configured at all; a signed URL like this is the only
-way in, and only until it expires.
+This file has two ways of getting a file into R2:
 
-We are NOT building the upload UI yet (that's a later day) - this file
-is just the helper that will generate those links when we do.
+  generate_upload_url() hands back a short-lived "signed URL" - a link
+  that would let the FRONTEND upload directly to R2 itself, without the
+  file passing through our backend at all. Not used yet (Day 1 built it
+  ahead of time; nothing calls it yet).
+
+  upload_file_bytes() uploads bytes we already have on the backend
+  directly to R2, using our own credentials. This is what the Day 2
+  upload endpoint uses: we need the file's actual bytes in hand anyway,
+  to check its real type and compute its checksum, so it makes sense to
+  push it to R2 ourselves once that's done, rather than route back
+  through a signed URL.
+
+Either way, the bucket itself has no public access configured at all -
+these are the only two ways in.
 """
 
 import boto3
@@ -60,4 +67,22 @@ def generate_upload_url(
             "ContentType": content_type,
         },
         ExpiresIn=expires_in_seconds,
+    )
+
+
+def upload_file_bytes(storage_key: str, file_bytes: bytes, content_type: str) -> None:
+    """
+    Uploads bytes we already have directly to R2, through our own
+    backend credentials - as opposed to generate_upload_url(), which is
+    for letting someone ELSE upload without the file ever reaching us.
+
+    Whatever bytes are passed in are stored EXACTLY as given - nothing
+    here compresses, resizes, or otherwise touches the file. Preserving
+    the untouched original is the whole point of this function.
+    """
+    _r2_client.put_object(
+        Bucket=settings.r2_bucket_name,
+        Key=storage_key,
+        Body=file_bytes,
+        ContentType=content_type,
     )

@@ -18,7 +18,7 @@ from fastapi import FastAPI
 # error deep inside some unrelated feature.
 import app.config  # noqa: F401 (imported for this validation side-effect)
 from app.core.errors import register_exception_handlers
-from app.routers import auth, health
+from app.routers import auth, health, reports
 
 # Create the FastAPI application object. Everything (routes, middleware,
 # error handlers) gets attached to this single `app` object.
@@ -32,5 +32,7 @@ register_exception_handlers(app)
 # health.router holds "/" and "/health" (both public).
 # auth.router holds everything under "/auth/..." (a mix of public and
 # identity-checked routes - see app/routers/auth.py for which is which).
+# reports.router holds report upload (protected, ownership-checked).
 app.include_router(health.router)
 app.include_router(auth.router)
+app.include_router(reports.router)

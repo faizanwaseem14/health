@@ -31,6 +31,7 @@ ALLOWED_ACTIONS = {
     "login",
     "view_own_profile",
     "view_profile",
+    "upload_report",
     "view_report",
     "download_report",
     "view_result",
