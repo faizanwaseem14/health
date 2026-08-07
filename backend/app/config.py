@@ -38,11 +38,17 @@ _ENV_SPEC = [
     # --- Redis (Upstash), REST API — powers the background job queue ---
     ("UPSTASH_REDIS_REST_URL", True),
     ("UPSTASH_REDIS_REST_TOKEN", True),
-    # --- OCR (Google Cloud Vision) — not wired up until Day 2 ---
+    # --- OCR: Google Cloud Vision — only needed if OCR_PROVIDER=google_vision ---
     ("GOOGLE_VISION_API_KEY", False),
     # --- AI explanations (Claude / Anthropic) — not wired up until Day 2 ---
     ("ANTHROPIC_API_KEY", False),
 ]
+
+# OCR_PROVIDER isn't a simple "present or blank" secret like the ones
+# above — it's a small closed set of valid values with a safe default,
+# so it gets its own validation below instead of living in _ENV_SPEC.
+_ALLOWED_OCR_PROVIDERS = {"tesseract", "google_vision"}
+_DEFAULT_OCR_PROVIDER = "tesseract"
 
 
 @dataclass(frozen=True)
@@ -58,6 +64,7 @@ class Settings:
     r2_endpoint_url: str
     upstash_redis_rest_url: str
     upstash_redis_rest_token: str
+    ocr_provider: str
     google_vision_api_key: str | None
     anthropic_api_key: str | None
 
@@ -91,6 +98,23 @@ def load_settings() -> Settings:
             "each one.\n"
         )
 
+    ocr_provider = os.environ.get("OCR_PROVIDER", "").strip() or _DEFAULT_OCR_PROVIDER
+    if ocr_provider not in _ALLOWED_OCR_PROVIDERS:
+        raise RuntimeError(
+            "\n\n"
+            f"MedVault cannot start: OCR_PROVIDER={ocr_provider!r} is not valid.\n\n"
+            f"Must be one of: {sorted(_ALLOWED_OCR_PROVIDERS)}.\n"
+        )
+    if ocr_provider == "google_vision" and not values["GOOGLE_VISION_API_KEY"]:
+        raise RuntimeError(
+            "\n\n"
+            "MedVault cannot start: OCR_PROVIDER=google_vision but "
+            "GOOGLE_VISION_API_KEY is blank.\n\n"
+            "Fix: add a real key to backend/.env (see SETUP.md), or set "
+            "OCR_PROVIDER=tesseract to use the free local OCR provider "
+            "instead.\n"
+        )
+
     return Settings(
         database_url=values["DATABASE_URL"],
         firebase_service_account_json=values["FIREBASE_SERVICE_ACCOUNT_JSON"],
@@ -101,6 +125,7 @@ def load_settings() -> Settings:
         r2_endpoint_url=values["R2_ENDPOINT_URL"],
         upstash_redis_rest_url=values["UPSTASH_REDIS_REST_URL"],
         upstash_redis_rest_token=values["UPSTASH_REDIS_REST_TOKEN"],
+        ocr_provider=ocr_provider,
         google_vision_api_key=values["GOOGLE_VISION_API_KEY"],
         anthropic_api_key=values["ANTHROPIC_API_KEY"],
     )

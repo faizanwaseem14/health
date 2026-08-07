@@ -65,8 +65,8 @@ class Report(Base):
     # The date printed ON the report itself (not the upload date).
     report_date = Column(Date, nullable=True)
 
-    # "uploaded" today; later days add "processing" / "processed" /
-    # "failed" once OCR exists.
+    # "uploaded" -> "processing" -> "processed" or "failed", kept in
+    # sync with the report's OCR job (see app/jobs/service.py).
     status = Column(String, nullable=False, default="uploaded")
 
     created_at = Column(
@@ -82,4 +82,7 @@ class Report(Base):
     profile = relationship("Profile", back_populates="reports")
     results = relationship(
         "Result", back_populates="report", cascade="all, delete-orphan"
+    )
+    ocr_words = relationship(
+        "OcrWord", back_populates="report", cascade="all, delete-orphan"
     )

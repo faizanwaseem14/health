@@ -15,9 +15,11 @@ to jobs.status:
     queued          -> waiting for a worker to pick it up
     processing      -> a worker has claimed it and is working on it
     review_required -> processing finished but needs a human to look
-                        (not built into any real decision yet - that
-                        comes with real OCR/AI in a later group - but
-                        the state itself is fully wired up now)
+                        (the OCR group wires this up for one concrete
+                        case: OCR ran but found no text at all - a
+                        blank page, or scan too poor to read - see
+                        app/jobs/worker.py. AI-extraction-driven review
+                        cases are still a later group's work.)
     completed       -> finished successfully
     failed          -> ran out of retries, or errored in a way that
                         can't be retried

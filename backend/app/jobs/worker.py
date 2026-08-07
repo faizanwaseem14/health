@@ -7,13 +7,16 @@ Run it with:
 
     python -m app.jobs.worker
 
-Today, "processing" a job is a placeholder stub - it doesn't do OCR or
-call any AI yet (that's later groups). What this file proves is that
-the whole pipeline works end to end: a job goes from the queue, gets
-safely claimed exactly once even if delivered twice, moves through the
-right states, retries on failure, and never gets stuck. The real
-processing steps plug into `process_job_stub` later without touching
-any of this file's plumbing.
+"Processing" a job now means real OCR (see app/ocr/): download the
+report's original file from R2, run it through the active OCR
+provider, and store the extracted words as evidence. AI extraction
+(turning that evidence into actual test results) is still a later
+group's work - this worker's job is done once OCR evidence exists.
+
+What this file proves, regardless of what `processor` actually does: a
+job goes from the queue, gets safely claimed exactly once even if
+delivered twice, moves through the right states, retries on failure,
+and never gets stuck.
 """
 
 import logging
@@ -31,25 +34,44 @@ from app.jobs.service import (
     reap_stuck_jobs,
     retry_unenqueued_jobs,
 )
-from app.models import Job
+from app.models import Job, Report
+from app.ocr.service import run_ocr_for_report
 
 logger = logging.getLogger("medvault")
 
 POLL_INTERVAL_SECONDS = 2
 
 
-def process_job_stub(job: Job) -> str:
+def process_ocr_job(job: Job) -> str:
     """
-    PLACEHOLDER for the real processing steps (OCR, AI extraction, ...)
-    that later groups will add. Returns one of COMPLETED or
-    REVIEW_REQUIRED, or raises an exception to signal failure - the
-    same three outcomes a real processor will eventually have. For now
-    it always succeeds immediately.
+    Runs OCR on the job's report and stores the result as evidence.
+    Returns REVIEW_REQUIRED if OCR found no text at all (a genuinely
+    ambiguous case - a blank page, or a scan too poor to read - worth a
+    human's eyes rather than silently marking it "done" with nothing to
+    show), COMPLETED otherwise. Raising here (e.g. the file can't be
+    downloaded, or the OCR provider itself errors) is exactly how a
+    real failure signals to run_one_job below, which retries it like
+    any other failure.
+
+    Opens its own database session, separate from run_one_job's: the
+    claim/complete state transitions and the actual OCR work are two
+    different concerns, and process_job_stub's replacement should stay
+    a simple `(job) -> str`, matching every other processor this worker
+    could ever be given (see the tests in test_worker.py).
     """
-    return COMPLETED
+    db = SessionLocal()
+    try:
+        report = db.get(Report, job.report_id)
+        if report is None:
+            raise ValueError(f"Report {job.report_id} not found for job {job.id}.")
+        result = run_ocr_for_report(db, report, job.id)
+    finally:
+        db.close()
+
+    return COMPLETED if result.words else REVIEW_REQUIRED
 
 
-def run_one_job(job_id: str, processor=process_job_stub) -> None:
+def run_one_job(job_id: str, processor=process_ocr_job) -> None:
     """
     Claims one job by ID and runs it through `processor`, handling
     every outcome:

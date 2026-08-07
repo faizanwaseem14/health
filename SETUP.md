@@ -85,13 +85,63 @@ copy the value it gives you, and paste it into `backend/.env` (copy
      - `UPSTASH_REDIS_REST_URL` -> paste into `backend/.env` as-is.
      - `UPSTASH_REDIS_REST_TOKEN` -> paste into `backend/.env` as-is.
 
-## Not needed yet (safe to skip for now)
+- [ ] **Tesseract — OCR engine (reads text from report photos)**
 
-- [ ] **Google Cloud Vision — OCR (reads text from report photos)**
-  1. Create/open a project at https://console.cloud.google.com
-  2. Enable the "Cloud Vision API".
-  3. Create an API key scoped to that API.
-  4. Paste it into `GOOGLE_VISION_API_KEY` in `backend/.env`.
+  This is the ACTIVE OCR provider (`OCR_PROVIDER=tesseract` in
+  `backend/.env`, already the default) — free, runs entirely on your own
+  machine, no API key, no billing, no account to create. Unlike every
+  other item on this page, there's no `backend/.env` value to paste in
+  here: you're installing a program, not collecting a key.
+
+  **Windows:**
+  1. Download the installer from
+     https://github.com/UB-Mannheim/tesseract/wiki (the UB-Mannheim
+     build is the standard Windows installer for Tesseract — the
+     official project doesn't publish its own `.exe`).
+  2. Run it. The default install location is
+     `C:\Program Files\Tesseract-OCR`.
+  3. Add that folder to your Windows PATH so the `tesseract` command
+     works from any terminal:
+     - Search "Environment Variables" in the Start menu -> **Edit the
+       system environment variables** -> **Environment Variables...**
+     - Under "System variables", select **Path** -> **Edit** -> **New**
+       -> paste `C:\Program Files\Tesseract-OCR` (or wherever you
+       installed it) -> **OK** on every dialog.
+  4. Open a **new** terminal (PATH changes don't apply to already-open
+     ones) and confirm it worked:
+     ```
+     tesseract --version
+     ```
+     You should see a version number, e.g. `tesseract 5.x.x`.
+
+  **macOS:** `brew install tesseract`
+
+  **Linux (Debian/Ubuntu):** `sudo apt-get install tesseract-ocr`
+
+## Switching OCR to Google Vision (optional)
+
+Tesseract is free and runs locally, but reads lower-quality or unusual
+photos less accurately than Google's cloud OCR. Switching later is
+exactly the three steps below — nothing else in the app changes.
+
+1. Enable billing on a Google Cloud project (Cloud Vision's free tier
+   still needs a billing-enabled account attached, even though the
+   first 1,000 requests/month are free — this is a Google Cloud
+   account-level requirement, not something this app needs you to pay
+   for outright).
+   - Create/open a project at https://console.cloud.google.com
+   - Enable the "Cloud Vision API".
+   - Create an API key scoped to that API.
+2. Paste that key into `GOOGLE_VISION_API_KEY` in `backend/.env`.
+3. Change `OCR_PROVIDER=tesseract` to `OCR_PROVIDER=google_vision` in
+   `backend/.env`.
+
+That's it — every report processed after that point uses Google Vision
+instead. Switching back is the same change in reverse; nothing about
+already-processed reports or their stored evidence needs to change
+either way.
+
+## Not needed yet (safe to skip for now)
 
 - [ ] **Anthropic (Claude) — plain-language explanations**
   1. Sign up at https://console.anthropic.com

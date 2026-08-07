@@ -97,3 +97,6 @@ class Result(Base):
     )
 
     report = relationship("Report", back_populates="results")
+    ocr_word_links = relationship(
+        "ResultOcrWord", back_populates="result", cascade="all, delete-orphan"
+    )

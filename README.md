@@ -42,7 +42,7 @@ pytest            # run the test suite
 
 ## Database migrations (Alembic)
 
-The database schema (all 11 tables) lives as version-controlled files in
+The database schema (all 13 tables) lives as version-controlled files in
 `backend/alembic/versions/`, not as something you build by hand in Neon.
 
 Create the tables in your own Neon database:

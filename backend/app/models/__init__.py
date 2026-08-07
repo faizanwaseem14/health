@@ -9,10 +9,12 @@ from app.models.audit_log import AuditLog
 from app.models.correction import Correction
 from app.models.explanation import Explanation
 from app.models.job import Job
+from app.models.ocr_word import OcrWord
 from app.models.otp_attempt import OtpAttempt
 from app.models.profile import Profile
 from app.models.report import Report
 from app.models.result import Result
+from app.models.result_ocr_word import ResultOcrWord
 from app.models.share import Share
 from app.models.test_alias import TestAlias
 from app.models.user import User
@@ -22,10 +24,12 @@ __all__ = [
     "Correction",
     "Explanation",
     "Job",
+    "OcrWord",
     "OtpAttempt",
     "Profile",
     "Report",
     "Result",
+    "ResultOcrWord",
     "Share",
     "TestAlias",
     "User",

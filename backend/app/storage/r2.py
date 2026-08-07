@@ -86,3 +86,14 @@ def upload_file_bytes(storage_key: str, file_bytes: bytes, content_type: str) ->
         Body=file_bytes,
         ContentType=content_type,
     )
+
+
+def download_file_bytes(storage_key: str) -> bytes:
+    """
+    Downloads a file's bytes back out of R2 by its storage key - the
+    read-side counterpart to upload_file_bytes(). Used by the OCR
+    worker to fetch a report's original file for processing; nothing
+    here modifies the stored object.
+    """
+    response = _r2_client.get_object(Bucket=settings.r2_bucket_name, Key=storage_key)
+    return response["Body"].read()
