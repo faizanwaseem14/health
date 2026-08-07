@@ -15,9 +15,13 @@ Here, for the happy-path shape check, we mock the database session too
 handed to R2 with the right bytes and key, even though the response's
 "id" field won't be a real value in this particular test. Job creation
 (app.jobs.service.create_and_enqueue_job) is mocked here too, since it
-would otherwise make a real HTTP call to Upstash - see test_jobs.py and
-the Task summary for the real, end-to-end proof of the queue/worker
-pipeline against a throwaway local Postgres.
+would otherwise make a real HTTP call to Upstash - see test_job_service.py,
+test_worker.py, and the Task summaries for the real, end-to-end proof of
+the queue/worker pipeline (including retries) against a throwaway local
+Postgres.
+
+The retry route's own logic (get_latest_job_for_report,
+retry_failed_job) is mocked here too, for the same reason.
 """
 
 import io
@@ -28,10 +32,10 @@ from fastapi.testclient import TestClient
 from PIL import Image
 
 from app.auth.dependencies import get_current_user
-from app.jobs.service import QUEUED
+from app.jobs.service import COMPLETED, FAILED, QUEUED, JobNotRetryableError
 from app.main import app
-from app.models import Job, Profile, User
-from app.routers.reports import require_owned_profile
+from app.models import Job, Profile, Report, User
+from app.routers.reports import require_owned_profile, require_owned_report
 
 client = TestClient(app)
 
@@ -183,3 +187,110 @@ def test_upload_succeeds_for_a_real_valid_png():
     called_db, called_report_id = mock_create_job.call_args[0][:2]
     assert called_db is fake_db
     assert mock_create_job.call_args[1]["job_type"] == "ocr_extraction"
+
+
+# --- POST /reports/{row_id}/retry ---
+
+
+def test_retry_requires_login():
+    response = client.post(f"/reports/{uuid.uuid4()}/retry")
+
+    assert response.status_code == 401
+
+
+def test_retry_rejects_someone_elses_report():
+    user = User(id=uuid.uuid4(), phone_number="+15551234567")
+    app.dependency_overrides[get_current_user] = lambda: user
+    # Deliberately NOT overriding require_owned_report - same reasoning
+    # as the upload ownership test: it hits a real (fake, localhost) DB
+    # lookup and fails fast, which is a fine proxy for "not overridden".
+    try:
+        response = client.post(f"/reports/{uuid.uuid4()}/retry")
+    finally:
+        _clear_overrides()
+
+    assert response.status_code in (404, 503)
+
+
+def test_retry_returns_404_when_the_report_has_no_job():
+    user = User(id=uuid.uuid4(), phone_number="+15551234567")
+    report = Report(id=uuid.uuid4(), profile_id=uuid.uuid4(), status=FAILED)
+    app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[require_owned_report] = lambda: report
+
+    try:
+        with patch("app.routers.reports.get_latest_job_for_report", return_value=None):
+            response = client.post(f"/reports/{report.id}/retry")
+    finally:
+        _clear_overrides()
+
+    assert response.status_code == 404
+
+
+def test_retry_returns_409_when_the_job_is_not_actually_failed():
+    # The core requirement: retrying only makes sense for a job that's
+    # genuinely "failed" - the global JobNotRetryableError handler
+    # turns this into a clear 409, not a crash.
+    user = User(id=uuid.uuid4(), phone_number="+15551234567")
+    report = Report(id=uuid.uuid4(), profile_id=uuid.uuid4(), status="processing")
+    job = Job(id=uuid.uuid4(), report_id=report.id, job_type="ocr_extraction")
+    job.status = COMPLETED
+    app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[require_owned_report] = lambda: report
+
+    try:
+        with (
+            patch("app.routers.reports.get_latest_job_for_report", return_value=job),
+            patch(
+                "app.routers.reports.retry_failed_job",
+                side_effect=JobNotRetryableError(
+                    "Job is 'completed', not 'failed' - "
+                    "only a failed job can be retried."
+                ),
+            ),
+        ):
+            response = client.post(f"/reports/{report.id}/retry")
+    finally:
+        _clear_overrides()
+
+    assert response.status_code == 409
+    assert response.json()["status"] == "error"
+
+
+def test_retry_succeeds_for_a_genuinely_failed_job():
+    user = User(id=uuid.uuid4(), phone_number="+15551234567")
+    report = Report(id=uuid.uuid4(), profile_id=uuid.uuid4(), status=FAILED)
+    old_job = Job(id=uuid.uuid4(), report_id=report.id, job_type="ocr_extraction")
+    old_job.status = FAILED
+    retried_job = Job(id=old_job.id, report_id=report.id, job_type="ocr_extraction")
+    retried_job.status = QUEUED
+
+    fake_db = MagicMock()
+    from app.auth.dependencies import get_db
+
+    def fake_get_db():
+        yield fake_db
+
+    app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[require_owned_report] = lambda: report
+    app.dependency_overrides[get_db] = fake_get_db
+
+    try:
+        with (
+            patch(
+                "app.routers.reports.get_latest_job_for_report", return_value=old_job
+            ),
+            patch(
+                "app.routers.reports.retry_failed_job", return_value=retried_job
+            ) as mock_retry,
+        ):
+            response = client.post(f"/reports/{report.id}/retry")
+    finally:
+        _clear_overrides()
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "success"
+    assert body["data"]["job_id"] == str(retried_job.id)
+    assert body["data"]["job_status"] == QUEUED
+    mock_retry.assert_called_once_with(fake_db, old_job.id)

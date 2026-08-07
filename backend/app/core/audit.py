@@ -32,6 +32,7 @@ ALLOWED_ACTIONS = {
     "view_own_profile",
     "view_profile",
     "upload_report",
+    "retry_report_processing",
     "view_report",
     "download_report",
     "view_result",

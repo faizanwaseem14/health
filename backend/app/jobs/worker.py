@@ -29,6 +29,7 @@ from app.jobs.service import (
     fail_or_retry_job,
     mark_needs_review,
     reap_stuck_jobs,
+    retry_unenqueued_jobs,
 )
 from app.models import Job
 
@@ -103,6 +104,10 @@ def run_worker_loop(max_iterations: int | None = None) -> None:
             reaped = reap_stuck_jobs(db)
             if reaped:
                 logger.info("Reaped %d stuck job(s)", reaped)
+
+            retried = retry_unenqueued_jobs(db)
+            if retried:
+                logger.info("Retried enqueueing %d job(s)", retried)
         finally:
             db.close()
 

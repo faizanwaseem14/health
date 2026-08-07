@@ -10,14 +10,18 @@ import hashlib
 import logging
 import uuid
 
-from fastapi import APIRouter, Depends, File, Request, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user, get_db
 from app.auth.ownership import require_owned_row
 from app.core.audit import record_audit_event
 from app.core.responses import success_response
-from app.jobs.service import create_and_enqueue_job
+from app.jobs.service import (
+    create_and_enqueue_job,
+    get_latest_job_for_report,
+    retry_failed_job,
+)
 from app.models import Profile, Report, User
 from app.storage.file_validation import (
     EXTENSION_BY_MIME_TYPE,
@@ -32,10 +36,11 @@ logger = logging.getLogger("medvault")
 router = APIRouter()
 
 # Defined once so tests can override this EXACT dependency object (see
-# tests/test_reports.py) - require_owned_row(Profile) builds a new
-# function each time it's called, so the route and any test overriding
-# it need to share this same instance.
+# tests/test_reports.py) - require_owned_row(...) builds a new function
+# each time it's called, so the route and any test overriding it need
+# to share this same instance.
 require_owned_profile = require_owned_row(Profile)
+require_owned_report = require_owned_row(Report)
 
 
 @router.post("/profiles/{row_id}/reports")
@@ -102,10 +107,12 @@ async def upload_report(
     )
 
     # Puts a background job on the queue for the OCR pipeline (later
-    # groups). If this fails, create_and_enqueue_job() already marks
-    # the job "failed" itself and re-raises - the report is safely
-    # stored either way, but we don't pretend background processing
-    # started when it didn't.
+    # groups). This ALWAYS succeeds from the upload's point of view: the
+    # file is already safely stored above, so even if putting the job on
+    # the Redis queue fails, create_and_enqueue_job() doesn't raise -
+    # the job just stays "queued" and gets retried automatically in the
+    # background. The user should never see an error here just because
+    # a queue hiccuped.
     job = create_and_enqueue_job(db, report.id, job_type="ocr_extraction")
 
     return success_response(
@@ -121,4 +128,50 @@ async def upload_report(
             "job_status": job.status,
         },
         status_code=201,
+    )
+
+
+@router.post("/reports/{row_id}/retry")
+def retry_report_processing(
+    request: Request,
+    report: Report = Depends(require_owned_report),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    PROTECTED route: retries processing for a report whose job ended up
+    "failed" after exhausting its retries. This only resets and
+    re-queues the background job - the original file in R2 is
+    completely untouched by this and does NOT need to be re-uploaded.
+
+    Returns 409 (via the global error handler) if the report's job
+    isn't actually "failed" - e.g. it's still processing, or already
+    finished - since retrying something that isn't broken isn't a
+    legitimate retry.
+    """
+    job = get_latest_job_for_report(db, report.id)
+    if job is None:
+        raise HTTPException(
+            status_code=404, detail="No processing job found for this report."
+        )
+
+    job = retry_failed_job(db, job.id)
+
+    record_audit_event(
+        db,
+        action="retry_report_processing",
+        ip_address=request.client.host if request.client else "unknown",
+        user_id=user.id,
+        resource_type="report",
+        resource_id=report.id,
+        user_agent=request.headers.get("user-agent"),
+    )
+
+    return success_response(
+        {
+            "id": str(report.id),
+            "status": report.status,
+            "job_id": str(job.id),
+            "job_status": job.status,
+        }
     )

@@ -1,9 +1,13 @@
 """
 Job lifecycle management: creating jobs, safely CLAIMING one for
-processing (the piece that makes redelivery safe), and moving a job
-through its states. The `jobs` table (Day 1 schema) is the source of
-truth for a job's state - Redis (app/jobs/queue.py) only ever signals
-"something is ready"; it never decides what state a job is actually in.
+processing (the piece that makes redelivery safe), moving a job through
+its states, and keeping the REPORT's own status in sync with what its
+job is doing - so a report's status always tells the truth about
+whether its file is safe (always) and whether processing worked.
+
+The `jobs` table (Day 1 schema) is the source of truth for a job's
+state - Redis (app/jobs/queue.py) only ever signals "something is
+ready"; it never decides what state a job is actually in.
 
 The six states a job can ever be in - no other string is ever written
 to jobs.status:
@@ -18,6 +22,11 @@ to jobs.status:
     failed          -> ran out of retries, or errored in a way that
                         can't be retried
     cancelled       -> explicitly cancelled before it finished
+
+IMPORTANT: nothing in this module ever fails an upload, and nothing
+here re-processes or re-touches the ORIGINAL FILE. A Redis hiccup or a
+processing failure is always something that happens to the JOB - the
+file in R2 is untouched either way, and never needs re-uploading.
 """
 
 import logging
@@ -28,7 +37,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.jobs.queue import enqueue_job
-from app.models import Job
+from app.models import Job, Report
 
 logger = logging.getLogger("medvault")
 
@@ -50,6 +59,49 @@ MAX_JOB_ATTEMPTS = 3
 # it along instead of leaving it stuck forever.
 JOB_PROCESSING_TIMEOUT = timedelta(minutes=5)
 
+# How long a job is allowed to sit "queued" with zero attempts before we
+# suspect its original enqueue() call to Redis silently failed, and try
+# pushing it again. Long enough that a normal enqueue+claim (which
+# happens in milliseconds under normal conditions) never triggers this.
+JOB_ENQUEUE_RETRY_DELAY = timedelta(seconds=30)
+
+# The report.status values this module keeps in sync with job outcomes
+# (the Report model's own comment already anticipated exactly these).
+REPORT_UPLOADED = "uploaded"
+REPORT_PROCESSING = "processing"
+REPORT_PROCESSED = "processed"
+REPORT_FAILED = "failed"
+
+
+class JobNotRetryableError(Exception):
+    """Raised when trying to retry a job that isn't actually 'failed'."""
+
+
+def _enqueue_or_log(job_id) -> None:
+    """
+    Puts a job on the Redis queue, but NEVER lets a transient failure
+    propagate as an error to whoever called us - a successful upload
+    (or a retry request) should never turn into an error just because
+    Redis hiccuped for a moment. The job simply stays "queued" in the
+    database, and retry_unenqueued_jobs() (called every pass of the
+    worker loop) will notice and try again shortly.
+    """
+    try:
+        enqueue_job(job_id)
+    except Exception:
+        logger.exception(
+            "Failed to enqueue job %s - will retry automatically in the background",
+            job_id,
+        )
+
+
+def _sync_report_status(db: Session, job: Job, report_status: str) -> None:
+    """Keeps the report's status lined up with what its job just did."""
+    report = db.get(Report, job.report_id)
+    if report is not None:
+        report.status = report_status
+        db.commit()
+
 
 def create_and_enqueue_job(db: Session, report_id: UUID, job_type: str) -> Job:
     """
@@ -57,26 +109,18 @@ def create_and_enqueue_job(db: Session, report_id: UUID, job_type: str) -> Job:
     queue for a worker to pick up. Called right after a report upload
     finishes successfully.
 
-    If putting it on the queue fails (e.g. Redis is briefly
-    unreachable), the job is marked failed immediately rather than left
-    behind claiming to be "queued" when nothing will ever come to pick
-    it up - that's exactly the "silent limbo" this whole system exists
-    to avoid.
+    The upload NEVER fails because of this step: the file is already
+    safely stored in R2 by the time this runs, so if Redis is briefly
+    unreachable, the job just stays "queued" (see _enqueue_or_log) and
+    gets automatically retried in the background - the caller (the
+    upload route) always gets a job back and the request succeeds.
     """
     job = Job(report_id=report_id, job_type=job_type, status=QUEUED, attempts=0)
     db.add(job)
     db.commit()
     db.refresh(job)
 
-    try:
-        enqueue_job(job.id)
-    except Exception:
-        logger.exception("Failed to enqueue job %s", job.id)
-        job.status = FAILED
-        job.error_message = "Failed to enqueue job."
-        job.completed_at = datetime.now(timezone.utc)
-        db.commit()
-        raise
+    _enqueue_or_log(job.id)
 
     return job
 
@@ -117,7 +161,10 @@ def claim_job(db: Session, job_id: UUID) -> Job | None:
 
     if not claimed:
         return None
-    return db.get(Job, job_id)
+
+    job = db.get(Job, job_id)
+    _sync_report_status(db, job, REPORT_PROCESSING)
+    return job
 
 
 def complete_job(db: Session, job_id: UUID) -> None:
@@ -128,6 +175,7 @@ def complete_job(db: Session, job_id: UUID) -> None:
     job.status = COMPLETED
     job.completed_at = datetime.now(timezone.utc)
     db.commit()
+    _sync_report_status(db, job, REPORT_PROCESSED)
 
 
 def mark_needs_review(db: Session, job_id: UUID) -> None:
@@ -138,13 +186,20 @@ def mark_needs_review(db: Session, job_id: UUID) -> None:
     job.status = REVIEW_REQUIRED
     job.completed_at = datetime.now(timezone.utc)
     db.commit()
+    # report.status intentionally stays "processing" here - Day 1's
+    # anticipated report statuses (uploaded/processing/processed/failed)
+    # don't include a review state of their own, and adding one isn't
+    # part of this change.
 
 
 def fail_or_retry_job(db: Session, job_id: UUID, error_message: str) -> None:
     """
     Called when processing a job raises an error. If attempts remain,
     puts it back in the queue for another try; otherwise marks it
-    permanently failed. A no-op if the job isn't currently processing.
+    permanently failed AND updates the report's status to match, so the
+    frontend can tell the user processing failed - while the file
+    itself was never touched and needs no re-upload. A no-op if the
+    job isn't currently processing.
     """
     job = db.get(Job, job_id)
     if job is None or job.status != PROCESSING:
@@ -156,11 +211,12 @@ def fail_or_retry_job(db: Session, job_id: UUID, error_message: str) -> None:
         job.status = QUEUED
         job.started_at = None
         db.commit()
-        enqueue_job(job.id)
+        _enqueue_or_log(job.id)
     else:
         job.status = FAILED
         job.completed_at = datetime.now(timezone.utc)
         db.commit()
+        _sync_report_status(db, job, REPORT_FAILED)
 
 
 def cancel_job(db: Session, job_id: UUID) -> bool:
@@ -188,8 +244,9 @@ def reap_stuck_jobs(db: Session) -> int:
     Finds jobs that have been "processing" for longer than
     JOB_PROCESSING_TIMEOUT - meaning whatever worker claimed them
     crashed or hung before finishing - and moves them along: retried if
-    attempts remain, permanently failed otherwise. Nothing is ever left
-    sitting in "processing" forever.
+    attempts remain, permanently failed (with the report updated to
+    match) otherwise. Nothing is ever left sitting in "processing"
+    forever.
 
     Returns how many jobs were reaped, so the worker loop can log it.
     """
@@ -204,10 +261,79 @@ def reap_stuck_jobs(db: Session) -> int:
             job.status = QUEUED
             job.started_at = None
             db.commit()
-            enqueue_job(job.id)
+            _enqueue_or_log(job.id)
         else:
             job.status = FAILED
             job.completed_at = datetime.now(timezone.utc)
             db.commit()
+            _sync_report_status(db, job, REPORT_FAILED)
 
     return len(stuck_jobs)
+
+
+def retry_unenqueued_jobs(db: Session) -> int:
+    """
+    Finds jobs that are still "queued" but have sat unclaimed for a
+    suspiciously long time - a sign the original enqueue() call may
+    have silently failed right after a report was uploaded (or a
+    failed job was retried) - and puts their ID on the queue again.
+
+    This is always safe to call even if the original enqueue actually
+    DID succeed: claim_job()'s atomic UPDATE means a job can only ever
+    be claimed once, so a duplicate entry in the Redis queue for a job
+    that's already being processed (or already finished) is simply
+    ignored once it's eventually dequeued.
+
+    Returns how many jobs were retried, so the worker loop can log it.
+    """
+    cutoff = datetime.now(timezone.utc) - JOB_ENQUEUE_RETRY_DELAY
+    stale_jobs = (
+        db.query(Job)
+        .filter(Job.status == QUEUED, Job.attempts == 0, Job.created_at < cutoff)
+        .all()
+    )
+    for job in stale_jobs:
+        _enqueue_or_log(job.id)
+    return len(stale_jobs)
+
+
+def get_latest_job_for_report(db: Session, report_id: UUID) -> Job | None:
+    """The most recent job created for a report - what a retry acts on."""
+    return (
+        db.query(Job)
+        .filter(Job.report_id == report_id)
+        .order_by(Job.created_at.desc())
+        .first()
+    )
+
+
+def retry_failed_job(db: Session, job_id: UUID) -> Job:
+    """
+    Resets a permanently-failed job back to "queued" with a brand new
+    set of attempts, and puts it back on the queue. Only works on a job
+    that's genuinely "failed" - retrying one that's still in progress,
+    already succeeded, or was cancelled would be a mistake, not a
+    legitimate retry, so that raises JobNotRetryableError instead.
+
+    The original file in R2 was never touched by any of this and does
+    not need to be re-uploaded - only the processing job is reset.
+    """
+    job = db.get(Job, job_id)
+    if job is None:
+        raise JobNotRetryableError("Job not found.")
+    if job.status != FAILED:
+        raise JobNotRetryableError(
+            f"Job is '{job.status}', not 'failed' - only a failed job can be retried."
+        )
+
+    job.status = QUEUED
+    job.attempts = 0
+    job.error_message = None
+    job.started_at = None
+    job.completed_at = None
+    db.commit()
+
+    _sync_report_status(db, job, REPORT_PROCESSING)
+    _enqueue_or_log(job.id)
+
+    return job

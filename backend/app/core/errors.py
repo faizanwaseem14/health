@@ -20,6 +20,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.auth.rate_limit import OtpRateLimitExceededError
 from app.auth.recovery import RecoveryCodeInvalidError
+from app.jobs.service import JobNotRetryableError
 from app.storage.file_validation import FileTooLargeError, InvalidFileTypeError
 
 logger = logging.getLogger("medvault")
@@ -71,6 +72,12 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(InvalidFileTypeError)
     async def handle_invalid_file_type(request: Request, exc: InvalidFileTypeError):
         return _error_response(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, str(exc))
+
+    @app.exception_handler(JobNotRetryableError)
+    async def handle_job_not_retryable(request: Request, exc: JobNotRetryableError):
+        # 409 Conflict: the request is valid, but the job isn't in a
+        # state ("failed") that a retry makes sense for right now.
+        return _error_response(status.HTTP_409_CONFLICT, str(exc))
 
     @app.exception_handler(SQLAlchemyError)
     async def handle_database_error(request: Request, exc: SQLAlchemyError):

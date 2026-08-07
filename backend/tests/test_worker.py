@@ -101,6 +101,7 @@ def test_run_worker_loop_processes_one_job_then_stops():
     with (
         patch("app.jobs.worker.SessionLocal", return_value=MagicMock()),
         patch("app.jobs.worker.reap_stuck_jobs", return_value=0),
+        patch("app.jobs.worker.retry_unenqueued_jobs", return_value=0),
         patch("app.jobs.worker.dequeue_job", side_effect=["job-1", None]),
         patch("app.jobs.worker.run_one_job") as mock_run_one_job,
         patch("app.jobs.worker.time.sleep"),
@@ -114,9 +115,23 @@ def test_run_worker_loop_reaps_stuck_jobs_every_iteration():
     with (
         patch("app.jobs.worker.SessionLocal", return_value=MagicMock()),
         patch("app.jobs.worker.reap_stuck_jobs", return_value=0) as mock_reap,
+        patch("app.jobs.worker.retry_unenqueued_jobs", return_value=0),
         patch("app.jobs.worker.dequeue_job", return_value=None),
         patch("app.jobs.worker.time.sleep"),
     ):
         run_worker_loop(max_iterations=3)
 
     assert mock_reap.call_count == 3
+
+
+def test_run_worker_loop_retries_unenqueued_jobs_every_iteration():
+    with (
+        patch("app.jobs.worker.SessionLocal", return_value=MagicMock()),
+        patch("app.jobs.worker.reap_stuck_jobs", return_value=0),
+        patch("app.jobs.worker.retry_unenqueued_jobs", return_value=0) as mock_retry,
+        patch("app.jobs.worker.dequeue_job", return_value=None),
+        patch("app.jobs.worker.time.sleep"),
+    ):
+        run_worker_loop(max_iterations=3)
+
+    assert mock_retry.call_count == 3
