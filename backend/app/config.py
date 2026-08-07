@@ -35,8 +35,9 @@ _ENV_SPEC = [
     ("R2_SECRET_ACCESS_KEY", True),
     ("R2_BUCKET_NAME", True),
     ("R2_ENDPOINT_URL", True),
-    # --- Redis (Upstash) — not wired up until Day 2 ---
-    ("REDIS_URL", False),
+    # --- Redis (Upstash), REST API — powers the background job queue ---
+    ("UPSTASH_REDIS_REST_URL", True),
+    ("UPSTASH_REDIS_REST_TOKEN", True),
     # --- OCR (Google Cloud Vision) — not wired up until Day 2 ---
     ("GOOGLE_VISION_API_KEY", False),
     # --- AI explanations (Claude / Anthropic) — not wired up until Day 2 ---
@@ -55,7 +56,8 @@ class Settings:
     r2_secret_access_key: str
     r2_bucket_name: str
     r2_endpoint_url: str
-    redis_url: str | None
+    upstash_redis_rest_url: str
+    upstash_redis_rest_token: str
     google_vision_api_key: str | None
     anthropic_api_key: str | None
 
@@ -97,7 +99,8 @@ def load_settings() -> Settings:
         r2_secret_access_key=values["R2_SECRET_ACCESS_KEY"],
         r2_bucket_name=values["R2_BUCKET_NAME"],
         r2_endpoint_url=values["R2_ENDPOINT_URL"],
-        redis_url=values["REDIS_URL"],
+        upstash_redis_rest_url=values["UPSTASH_REDIS_REST_URL"],
+        upstash_redis_rest_token=values["UPSTASH_REDIS_REST_TOKEN"],
         google_vision_api_key=values["GOOGLE_VISION_API_KEY"],
         anthropic_api_key=values["ANTHROPIC_API_KEY"],
     )

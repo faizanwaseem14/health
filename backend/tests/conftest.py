@@ -12,7 +12,7 @@ Important: these values live only in memory for the life of this test
 run. They are never written to any file, and they are never real
 credentials - just placeholder text so the app's startup check passes
 and we can test the parts of the app that don't need a real Neon/
-Firebase/R2 connection yet.
+Firebase/R2/Redis connection yet.
 
 os.environ.setdefault(...) only sets a value if one isn't already set,
 so if you DO have real values in your shell environment, those win.
@@ -31,3 +31,5 @@ os.environ.setdefault("R2_BUCKET_NAME", "test-bucket")
 os.environ.setdefault(
     "R2_ENDPOINT_URL", "https://test-account-id.r2.cloudflarestorage.com"
 )
+os.environ.setdefault("UPSTASH_REDIS_REST_URL", "https://test-redis.upstash.io")
+os.environ.setdefault("UPSTASH_REDIS_REST_TOKEN", "test-upstash-token")

@@ -17,6 +17,7 @@ from app.auth.dependencies import get_current_user, get_db
 from app.auth.ownership import require_owned_row
 from app.core.audit import record_audit_event
 from app.core.responses import success_response
+from app.jobs.service import create_and_enqueue_job
 from app.models import Profile, Report, User
 from app.storage.file_validation import (
     EXTENSION_BY_MIME_TYPE,
@@ -100,6 +101,13 @@ async def upload_report(
         user_agent=request.headers.get("user-agent"),
     )
 
+    # Puts a background job on the queue for the OCR pipeline (later
+    # groups). If this fails, create_and_enqueue_job() already marks
+    # the job "failed" itself and re-raises - the report is safely
+    # stored either way, but we don't pretend background processing
+    # started when it didn't.
+    job = create_and_enqueue_job(db, report.id, job_type="ocr_extraction")
+
     return success_response(
         {
             "id": str(report.id),
@@ -109,6 +117,8 @@ async def upload_report(
             "original_width": report.original_width,
             "original_height": report.original_height,
             "original_checksum": report.original_checksum,
+            "job_id": str(job.id),
+            "job_status": job.status,
         },
         status_code=201,
     )

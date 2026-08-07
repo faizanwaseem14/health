@@ -13,7 +13,11 @@ credentials.
 Here, for the happy-path shape check, we mock the database session too
 - enough to prove the file was correctly validated, fingerprinted, and
 handed to R2 with the right bytes and key, even though the response's
-"id" field won't be a real value in this particular test.
+"id" field won't be a real value in this particular test. Job creation
+(app.jobs.service.create_and_enqueue_job) is mocked here too, since it
+would otherwise make a real HTTP call to Upstash - see test_jobs.py and
+the Task summary for the real, end-to-end proof of the queue/worker
+pipeline against a throwaway local Postgres.
 """
 
 import io
@@ -24,8 +28,9 @@ from fastapi.testclient import TestClient
 from PIL import Image
 
 from app.auth.dependencies import get_current_user
+from app.jobs.service import QUEUED
 from app.main import app
-from app.models import Profile, User
+from app.models import Job, Profile, User
 from app.routers.reports import require_owned_profile
 
 client = TestClient(app)
@@ -130,6 +135,8 @@ def test_upload_succeeds_for_a_real_valid_png():
 
     png_bytes = _make_real_png_bytes(64, 48)
     fake_db = MagicMock()
+    fake_job = Job(id=uuid.uuid4(), report_id=uuid.uuid4(), job_type="ocr_extraction")
+    fake_job.status = QUEUED
 
     from app.auth.dependencies import get_db
 
@@ -139,7 +146,12 @@ def test_upload_succeeds_for_a_real_valid_png():
     app.dependency_overrides[get_db] = fake_get_db
 
     try:
-        with patch("app.routers.reports.upload_file_bytes") as mock_upload:
+        with (
+            patch("app.routers.reports.upload_file_bytes") as mock_upload,
+            patch(
+                "app.routers.reports.create_and_enqueue_job", return_value=fake_job
+            ) as mock_create_job,
+        ):
             response = client.post(
                 f"/profiles/{profile.id}/reports",
                 files={"file": ("photo.png", png_bytes, "image/png")},
@@ -154,6 +166,8 @@ def test_upload_succeeds_for_a_real_valid_png():
     assert body["data"]["file_size_bytes"] == len(png_bytes)
     assert body["data"]["original_width"] == 64
     assert body["data"]["original_height"] == 48
+    assert body["data"]["job_id"] == str(fake_job.id)
+    assert body["data"]["job_status"] == QUEUED
 
     # R2 was called with the file's REAL bytes, unmodified, and a
     # storage key that's not derived from anything the client sent.
@@ -163,3 +177,9 @@ def test_upload_succeeds_for_a_real_valid_png():
     assert called_content_type == "image/png"
     assert called_key.startswith(f"reports/{profile.id}/")
     assert called_key.endswith(".png")
+
+    # A job was created for the report that was actually just made.
+    mock_create_job.assert_called_once()
+    called_db, called_report_id = mock_create_job.call_args[0][:2]
+    assert called_db is fake_db
+    assert mock_create_job.call_args[1]["job_type"] == "ocr_extraction"

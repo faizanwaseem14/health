@@ -67,12 +67,25 @@ copy the value it gives you, and paste it into `backend/.env` (copy
        you picked a specific data-location jurisdiction (e.g. an `eu.`
        prefix).
 
-## Not needed until Day 2 (safe to skip for now)
+## Required for Day 2
 
-- [ ] **Upstash — Redis**
-  1. Sign up at https://upstash.com
+- [ ] **Upstash — Redis (REST API)**
+
+  Powers the background job queue (Day 2): when a report is uploaded,
+  a job goes on this queue for a separate worker process to pick up,
+  so the upload request doesn't have to wait on slow work.
+
+  1. Sign up at https://upstash.com (free tier is fine).
   2. Create a Redis database.
-  3. Copy the connection URL into `REDIS_URL` in `backend/.env`.
+  3. On the database's page, find the **REST API** section (not the
+     plain "Connect" / TCP connection string — we specifically use the
+     REST API, since it works over plain HTTPS instead of a raw TCP
+     connection).
+  4. Copy the two values shown there — Upstash labels them exactly:
+     - `UPSTASH_REDIS_REST_URL` -> paste into `backend/.env` as-is.
+     - `UPSTASH_REDIS_REST_TOKEN` -> paste into `backend/.env` as-is.
+
+## Not needed yet (safe to skip for now)
 
 - [ ] **Google Cloud Vision — OCR (reads text from report photos)**
   1. Create/open a project at https://console.cloud.google.com
