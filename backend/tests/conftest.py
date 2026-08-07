@@ -33,3 +33,4 @@ os.environ.setdefault(
 )
 os.environ.setdefault("UPSTASH_REDIS_REST_URL", "https://test-redis.upstash.io")
 os.environ.setdefault("UPSTASH_REDIS_REST_TOKEN", "test-upstash-token")
+os.environ.setdefault("ANTHROPIC_API_KEY", "sk-ant-test-fake-key-not-real")

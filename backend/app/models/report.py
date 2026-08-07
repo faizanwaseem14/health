@@ -69,6 +69,12 @@ class Report(Base):
     # sync with the report's OCR job (see app/jobs/service.py).
     status = Column(String, nullable=False, default="uploaded")
 
+    # Which AI model and prompt version produced this report's results
+    # (see app/ai/prompt.py) - set once extraction succeeds, so every
+    # processed report can be traced back to exactly what produced it.
+    extraction_model = Column(String, nullable=True)
+    extraction_prompt_version = Column(String, nullable=True)
+
     created_at = Column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

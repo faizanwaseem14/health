@@ -7,11 +7,13 @@ Run it with:
 
     python -m app.jobs.worker
 
-"Processing" a job now means real OCR (see app/ocr/): download the
-report's original file from R2, run it through the active OCR
-provider, and store the extracted words as evidence. AI extraction
-(turning that evidence into actual test results) is still a later
-group's work - this worker's job is done once OCR evidence exists.
+"Processing" a job now means OCR (see app/ocr/) followed by AI
+extraction (see app/ai/): download the report's original file from R2,
+run it through the active OCR provider and store the extracted words
+as evidence, then send that evidence to Claude and store the
+structured test rows it returns. The AI's job is only structured
+extraction - it never decides what a value means or flags anything;
+that "trust chain" verification is still a later group's work.
 
 What this file proves, regardless of what `processor` actually does: a
 job goes from the queue, gets safely claimed exactly once even if
@@ -22,6 +24,8 @@ and never gets stuck.
 import logging
 import time
 
+from app.ai.extraction import ExtractionRefusedError, ExtractionValidationError
+from app.ai.service import run_extraction_for_report
 from app.database import SessionLocal
 from app.jobs.queue import dequeue_job
 from app.jobs.service import (
@@ -44,31 +48,47 @@ POLL_INTERVAL_SECONDS = 2
 
 def process_ocr_job(job: Job) -> str:
     """
-    Runs OCR on the job's report and stores the result as evidence.
-    Returns REVIEW_REQUIRED if OCR found no text at all (a genuinely
-    ambiguous case - a blank page, or a scan too poor to read - worth a
-    human's eyes rather than silently marking it "done" with nothing to
-    show), COMPLETED otherwise. Raising here (e.g. the file can't be
-    downloaded, or the OCR provider itself errors) is exactly how a
-    real failure signals to run_one_job below, which retries it like
-    any other failure.
+    Runs OCR on the job's report, stores the result as evidence, then
+    (if OCR found any text) sends that evidence to Claude for
+    structured extraction.
+
+    Returns REVIEW_REQUIRED if OCR found no text at all (a blank page,
+    or a scan too poor to read), or if Claude's response didn't
+    validate against the strict schema or was refused - all genuinely
+    ambiguous cases worth a human's eyes rather than silently marking
+    the job "done" with nothing (or untrustworthy data) to show.
+    Returns COMPLETED once real, validated rows are stored. Raising
+    here (a download failure, an OCR provider error, or a genuine
+    Claude API/network error) is exactly how a real, retryable failure
+    signals to run_one_job below.
 
     Opens its own database session, separate from run_one_job's: the
-    claim/complete state transitions and the actual OCR work are two
-    different concerns, and process_job_stub's replacement should stay
-    a simple `(job) -> str`, matching every other processor this worker
-    could ever be given (see the tests in test_worker.py).
+    claim/complete state transitions and the actual processing work are
+    two different concerns, and this stays a simple `(job) -> str`,
+    matching every other processor this worker could ever be given (see
+    the tests in test_worker.py).
     """
     db = SessionLocal()
     try:
         report = db.get(Report, job.report_id)
         if report is None:
             raise ValueError(f"Report {job.report_id} not found for job {job.id}.")
-        result = run_ocr_for_report(db, report, job.id)
+
+        ocr_result = run_ocr_for_report(db, report, job.id)
+        if not ocr_result.words:
+            return REVIEW_REQUIRED
+
+        try:
+            run_extraction_for_report(db, report, job.id)
+        except (ExtractionValidationError, ExtractionRefusedError):
+            logger.warning(
+                "AI extraction for report %s needs review", report.id, exc_info=True
+            )
+            return REVIEW_REQUIRED
     finally:
         db.close()
 
-    return COMPLETED if result.words else REVIEW_REQUIRED
+    return COMPLETED
 
 
 def run_one_job(job_id: str, processor=process_ocr_job) -> None:

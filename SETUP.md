@@ -85,6 +85,17 @@ copy the value it gives you, and paste it into `backend/.env` (copy
      - `UPSTASH_REDIS_REST_URL` -> paste into `backend/.env` as-is.
      - `UPSTASH_REDIS_REST_TOKEN` -> paste into `backend/.env` as-is.
 
+- [ ] **Anthropic (Claude) — AI extraction**
+
+  Powers the AI extraction step: turns a report's OCR text into
+  structured test result rows (test name, value, unit, reference
+  range, ...). Runs on a cheap, fast model (Claude Haiku) since this is
+  plain extraction from text already in hand, not deep reasoning.
+
+  1. Sign up at https://console.anthropic.com
+  2. Go to API Keys -> Create Key.
+  3. Paste it into `ANTHROPIC_API_KEY` in `backend/.env`.
+
 - [ ] **Tesseract — OCR engine (reads text from report photos)**
 
   This is the ACTIVE OCR provider (`OCR_PROVIDER=tesseract` in
@@ -140,13 +151,6 @@ That's it — every report processed after that point uses Google Vision
 instead. Switching back is the same change in reverse; nothing about
 already-processed reports or their stored evidence needs to change
 either way.
-
-## Not needed yet (safe to skip for now)
-
-- [ ] **Anthropic (Claude) — plain-language explanations**
-  1. Sign up at https://console.anthropic.com
-  2. Go to API Keys -> Create Key.
-  3. Paste it into `ANTHROPIC_API_KEY` in `backend/.env`.
 
 ## How you'll know it worked
 

@@ -1,9 +1,7 @@
 """
 The `results` table: one row per individual test value extracted from a
-report (e.g. "Hemoglobin: 13.5 g/dL").
-
-Nothing extracts these yet - that's OCR/AI work on a later day. This
-table just defines the shape ahead of time.
+report (e.g. "Hemoglobin: 13.5 g/dL"). Populated by AI extraction (see
+app/ai/service.py) from a report's stored OCR evidence.
 """
 
 import uuid
@@ -34,6 +32,12 @@ class Result(Base):
         nullable=False,
         index=True,
     )
+    # Which job's AI extraction produced this row - useful for
+    # debugging a specific run; kept even if that job row is later
+    # deleted. Mirrors ocr_words.job_id.
+    job_id = Column(
+        UUID(as_uuid=True), ForeignKey("jobs.id", ondelete="SET NULL"), nullable=True
+    )
     # Links this raw test name to a standardized name (see test_alias.py).
     # Nullable because that matching happens later, not at upload time.
     test_alias_id = Column(
@@ -44,6 +48,11 @@ class Result(Base):
 
     # The test name exactly as it was printed on the report.
     raw_test_name = Column(String, nullable=False)
+    # The AI's own best standard/common name for the same test (e.g.
+    # "Hemoglobin" for a raw "HGB") - a plain text guess, not a match
+    # against test_aliases (test_alias_id above is the deterministic
+    # link for that).
+    canonical_test_name = Column(String, nullable=True)
 
     # The value as printed, kept as text so we never lose information
     # (e.g. "Negative", "13.5", "<0.1").
@@ -59,6 +68,16 @@ class Result(Base):
     # For ranges that aren't a simple low-high pair, e.g. "Negative" or
     # "< 5.0", exactly as printed.
     reference_range_text = Column(String, nullable=True)
+
+    # The date printed for this specific result, exactly as printed
+    # (formats vary too much across labs to safely parse into a real
+    # Date column - kept as text, same reasoning as `value` above).
+    result_date = Column(String, nullable=True)
+    # The lab/facility name printed on the report, if any.
+    lab_name = Column(String, nullable=True)
+    # The AI's own confidence (0.0-1.0) in this extraction - separate
+    # from any OCR word's confidence, which lives on ocr_words instead.
+    ai_confidence = Column(Numeric, nullable=True)
 
     # ------------------------------------------------------------------
     # IMPORTANT - read before touching this field:

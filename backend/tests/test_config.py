@@ -52,3 +52,13 @@ def test_tesseract_never_requires_a_vision_key():
 
     assert loaded.ocr_provider == "tesseract"
     assert loaded.google_vision_api_key is None
+
+
+def test_requires_anthropic_api_key():
+    # Every processed report goes through AI extraction now, so this
+    # key is required the same way DATABASE_URL is - not optional like
+    # GOOGLE_VISION_API_KEY, which only matters if that OCR provider is
+    # selected.
+    with patch.dict("os.environ", {"ANTHROPIC_API_KEY": ""}):
+        with pytest.raises(RuntimeError, match="ANTHROPIC_API_KEY"):
+            load_settings()

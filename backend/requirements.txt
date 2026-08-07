@@ -19,3 +19,4 @@ upstash-redis==1.7.0
 pytesseract==0.3.13
 pymupdf==1.28.2
 httpx==0.28.1
+anthropic==0.121.0

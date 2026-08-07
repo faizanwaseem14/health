@@ -40,8 +40,8 @@ _ENV_SPEC = [
     ("UPSTASH_REDIS_REST_TOKEN", True),
     # --- OCR: Google Cloud Vision — only needed if OCR_PROVIDER=google_vision ---
     ("GOOGLE_VISION_API_KEY", False),
-    # --- AI explanations (Claude / Anthropic) — not wired up until Day 2 ---
-    ("ANTHROPIC_API_KEY", False),
+    # --- AI extraction (Claude / Anthropic) — every processed report uses this ---
+    ("ANTHROPIC_API_KEY", True),
 ]
 
 # OCR_PROVIDER isn't a simple "present or blank" secret like the ones
@@ -66,7 +66,7 @@ class Settings:
     upstash_redis_rest_token: str
     ocr_provider: str
     google_vision_api_key: str | None
-    anthropic_api_key: str | None
+    anthropic_api_key: str
 
 
 def load_settings() -> Settings:
