@@ -116,6 +116,24 @@ class Result(Base):
     # 0.80 threshold" - null when trust_status is "trusted".
     trust_check_notes = Column(Text, nullable=True)
 
+    # ------------------------------------------------------------------
+    # Unit conversion (app/units/): a DERIVED value, computed by plain
+    # code from `value`/`unit` above, expressed in the canonical test
+    # catalog's standard unit for this test (app/test_names/) - never
+    # the AI's opinion, never a substance-specific/medical conversion.
+    #
+    # These are ADDITIVE, not authoritative: `value`/`unit` above are
+    # always the original, exactly-as-printed source of truth and are
+    # NEVER overwritten by conversion. converted_value_numeric/
+    # converted_unit stay None whenever no default unit is known for
+    # this test, no unit was printed, the printed unit already matches
+    # the default, or the two units aren't a genuinely compatible pair
+    # with a well-defined conversion factor - nothing here ever forces
+    # or guesses a conversion.
+    # ------------------------------------------------------------------
+    converted_value_numeric = Column(Numeric, nullable=True)
+    converted_unit = Column(String, nullable=True)
+
     created_at = Column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

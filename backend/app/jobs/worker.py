@@ -8,14 +8,18 @@ Run it with:
     python -m app.jobs.worker
 
 "Processing" a job now means OCR (see app/ocr/), then AI extraction
-(see app/ai/), then the trust chain (see app/trust/): download the
+(see app/ai/), then test-name/unit normalization (see app/test_names/
+and app/units/), then the trust chain (see app/trust/): download the
 report's original file from R2, run it through the active OCR provider
 and store the extracted words as evidence, send that evidence to
-Claude and store the structured test rows it returns, then compute
-each row's low/normal/high status deterministically from its own
-printed value and range (never an AI opinion), then run every stored
-row through the trust chain's structural checks so nothing downstream
-ever sees an untraceable or malformed value marked "trusted".
+Claude and store the structured test rows it returns, resolve each
+row's test name against the canonical test-name catalog, compute each
+row's low/normal/high status deterministically from its own printed
+value and range (never an AI opinion), derive a converted value in the
+catalog's standard unit wherever a genuine unit conversion applies
+(never overwriting the original value/unit), then run every stored row
+through the trust chain's structural checks so nothing downstream ever
+sees an untraceable or malformed value marked "trusted".
 
 What this file proves, regardless of what `processor` actually does: a
 job goes from the queue, gets safely claimed exactly once even if
@@ -42,8 +46,10 @@ from app.jobs.service import (
 )
 from app.models import Job, Report
 from app.ocr.service import run_ocr_for_report
+from app.test_names.resolver import resolve_aliases_for_report
 from app.trust.service import run_trust_checks_for_report
 from app.trust.status import apply_status_for_report
+from app.units.service import apply_unit_conversion_for_report
 
 logger = logging.getLogger("medvault")
 
@@ -92,7 +98,9 @@ def process_ocr_job(job: Job) -> str:
             )
             return REVIEW_REQUIRED
 
+        resolve_aliases_for_report(db, report.id)
         apply_status_for_report(db, report.id)
+        apply_unit_conversion_for_report(db, report.id)
 
         all_trusted = run_trust_checks_for_report(db, report.id)
         if not all_trusted:
