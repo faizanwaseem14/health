@@ -50,10 +50,26 @@ def test_value_sanity_passes_for_a_comparator_prefixed_number():
     assert check_value_sanity("<0.1") is None
 
 
+def test_value_sanity_passes_for_less_than_notation():
+    assert check_value_sanity("<0.01") is None
+
+
+def test_value_sanity_passes_for_greater_than_notation():
+    assert check_value_sanity(">100") is None
+
+
 def test_value_sanity_fails_for_a_malformed_numeric_looking_value():
     reason = check_value_sanity("13..5x")
     assert reason is not None
     assert "13..5x" in reason
+
+
+def test_value_sanity_still_fails_for_a_malformed_value_with_a_comparator():
+    # The comparator notation fix only accepts a real number after the
+    # comparator - it doesn't loosen the "must actually parse" rule.
+    reason = check_value_sanity("<13..5x")
+    assert reason is not None
+    assert "<13..5x" in reason
 
 
 def test_value_sanity_fails_for_a_blank_value():

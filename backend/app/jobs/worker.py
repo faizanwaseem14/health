@@ -11,10 +11,11 @@ Run it with:
 (see app/ai/), then the trust chain (see app/trust/): download the
 report's original file from R2, run it through the active OCR provider
 and store the extracted words as evidence, send that evidence to
-Claude and store the structured test rows it returns, then run every
-stored row through the trust chain's structural checks so nothing
-downstream ever sees an untraceable or malformed value marked
-"trusted".
+Claude and store the structured test rows it returns, then compute
+each row's low/normal/high status deterministically from its own
+printed value and range (never an AI opinion), then run every stored
+row through the trust chain's structural checks so nothing downstream
+ever sees an untraceable or malformed value marked "trusted".
 
 What this file proves, regardless of what `processor` actually does: a
 job goes from the queue, gets safely claimed exactly once even if
@@ -42,6 +43,7 @@ from app.jobs.service import (
 from app.models import Job, Report
 from app.ocr.service import run_ocr_for_report
 from app.trust.service import run_trust_checks_for_report
+from app.trust.status import apply_status_for_report
 
 logger = logging.getLogger("medvault")
 
@@ -89,6 +91,8 @@ def process_ocr_job(job: Job) -> str:
                 "AI extraction for report %s needs review", report.id, exc_info=True
             )
             return REVIEW_REQUIRED
+
+        apply_status_for_report(db, report.id)
 
         all_trusted = run_trust_checks_for_report(db, report.id)
         if not all_trusted:

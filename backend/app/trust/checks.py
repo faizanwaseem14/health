@@ -7,10 +7,7 @@ human-readable reason string if it fails - never raises, never decides
 
 import re
 
-# Strips characters that are purely NUMERIC FORMATTING, never medical
-# meaning: comparator prefixes ("<0.1" means "less than 0.1", still a
-# real number), a trailing percent sign, and thousands separators.
-_LEADING_COMPARATORS = "<>=≤≥"
+from app.trust.numeric import parse_number as _parse_number
 
 
 def _looks_numeric(text: str) -> bool:
@@ -19,21 +16,6 @@ def _looks_numeric(text: str) -> bool:
     with no digits at all (e.g. "Negative", "Trace", "Not Detected")
     never claims to be a number, so it's never held to that bar."""
     return any(character.isdigit() for character in text)
-
-
-def _parse_number(text: str) -> float | None:
-    """
-    Best-effort parse of a value that LOOKS like it's meant to be a
-    number, stripping only pure formatting (not meaning): a leading
-    comparator, a trailing "%", and comma thousands separators. Returns
-    None if what's left still isn't a real number.
-    """
-    cleaned = text.strip().lstrip(_LEADING_COMPARATORS).strip()
-    cleaned = cleaned.rstrip("%").replace(",", "").strip()
-    try:
-        return float(cleaned)
-    except ValueError:
-        return None
 
 
 def _normalize_for_substring_match(text: str) -> str:
@@ -66,6 +48,12 @@ def check_value_sanity(value: str) -> str | None:
     formatting is stripped. A value with no digits at all (a genuine
     qualitative result like "Negative") is never held to this bar -
     that's not malformed, that's how real lab reports look.
+
+    A leading comparator is accepted as valid numeric formatting, not a
+    malformation: "<0.01" (less than 0.01) and ">100" (greater than
+    100) both pass, exactly as printed - this is purely accepting a
+    standard notation for a number, never inventing or assuming any
+    actual value.
     """
     stripped = value.strip()
     if not stripped:

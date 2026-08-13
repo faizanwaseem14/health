@@ -191,11 +191,13 @@ def test_process_ocr_job_returns_completed_when_extraction_and_trust_checks_succ
         patch(
             "app.jobs.worker.run_trust_checks_for_report", return_value=True
         ) as mock_trust,
+        patch("app.jobs.worker.apply_status_for_report") as mock_status,
     ):
         outcome = process_ocr_job(job)
 
     assert outcome == COMPLETED
     mock_extract.assert_called_once_with(fake_db, fake_report, job.id)
+    mock_status.assert_called_once_with(fake_db, fake_report.id)
     mock_trust.assert_called_once_with(fake_db, fake_report.id)
     fake_db.close.assert_called_once()
 
