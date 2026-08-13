@@ -7,13 +7,14 @@ Run it with:
 
     python -m app.jobs.worker
 
-"Processing" a job now means OCR (see app/ocr/) followed by AI
-extraction (see app/ai/): download the report's original file from R2,
-run it through the active OCR provider and store the extracted words
-as evidence, then send that evidence to Claude and store the
-structured test rows it returns. The AI's job is only structured
-extraction - it never decides what a value means or flags anything;
-that "trust chain" verification is still a later group's work.
+"Processing" a job now means OCR (see app/ocr/), then AI extraction
+(see app/ai/), then the trust chain (see app/trust/): download the
+report's original file from R2, run it through the active OCR provider
+and store the extracted words as evidence, send that evidence to
+Claude and store the structured test rows it returns, then run every
+stored row through the trust chain's structural checks so nothing
+downstream ever sees an untraceable or malformed value marked
+"trusted".
 
 What this file proves, regardless of what `processor` actually does: a
 job goes from the queue, gets safely claimed exactly once even if
@@ -40,6 +41,7 @@ from app.jobs.service import (
 )
 from app.models import Job, Report
 from app.ocr.service import run_ocr_for_report
+from app.trust.service import run_trust_checks_for_report
 
 logger = logging.getLogger("medvault")
 
@@ -50,17 +52,19 @@ def process_ocr_job(job: Job) -> str:
     """
     Runs OCR on the job's report, stores the result as evidence, then
     (if OCR found any text) sends that evidence to Claude for
-    structured extraction.
+    structured extraction, then runs every extracted row through the
+    trust chain's structural checks.
 
     Returns REVIEW_REQUIRED if OCR found no text at all (a blank page,
-    or a scan too poor to read), or if Claude's response didn't
-    validate against the strict schema or was refused - all genuinely
-    ambiguous cases worth a human's eyes rather than silently marking
-    the job "done" with nothing (or untrustworthy data) to show.
-    Returns COMPLETED once real, validated rows are stored. Raising
-    here (a download failure, an OCR provider error, or a genuine
-    Claude API/network error) is exactly how a real, retryable failure
-    signals to run_one_job below.
+    or a scan too poor to read), if Claude's response didn't validate
+    against the strict schema or was refused, or if the trust chain
+    routed any row to review_required - all genuinely ambiguous cases
+    worth a human's eyes rather than silently marking the job "done"
+    with nothing (or untrustworthy data) to show. Returns COMPLETED
+    only once real, validated rows are stored AND every one of them
+    passed every trust check. Raising here (a download failure, an OCR
+    provider error, or a genuine Claude API/network error) is exactly
+    how a real, retryable failure signals to run_one_job below.
 
     Opens its own database session, separate from run_one_job's: the
     claim/complete state transitions and the actual processing work are
@@ -84,6 +88,10 @@ def process_ocr_job(job: Job) -> str:
             logger.warning(
                 "AI extraction for report %s needs review", report.id, exc_info=True
             )
+            return REVIEW_REQUIRED
+
+        all_trusted = run_trust_checks_for_report(db, report.id)
+        if not all_trusted:
             return REVIEW_REQUIRED
     finally:
         db.close()

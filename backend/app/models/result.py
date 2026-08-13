@@ -13,6 +13,7 @@ from sqlalchemy import (
     ForeignKey,
     Numeric,
     String,
+    Text,
     func,
 )
 from sqlalchemy.dialects.postgresql import UUID
@@ -99,6 +100,22 @@ class Result(Base):
     # ------------------------------------------------------------------
     flag = Column(String, nullable=True)
 
+    # ------------------------------------------------------------------
+    # The "trust chain" (app/trust/): every extracted row is run through
+    # a set of structural checks (does its value actually appear in its
+    # own OCR evidence, is the value/range/unit well-formed, is the AI's
+    # confidence high enough) BEFORE anything downstream is allowed to
+    # treat it as real data. "trusted" means it passed every check;
+    # "review_required" means it failed at least one - and defaults to
+    # "review_required" (fail-closed) until the checks actually run, so
+    # a row is never accidentally treated as trusted just because
+    # nothing got around to checking it yet.
+    # ------------------------------------------------------------------
+    trust_status = Column(String, nullable=False, default="review_required")
+    # Which check failed and why, e.g. "confidence 0.62 is below the
+    # 0.80 threshold" - null when trust_status is "trusted".
+    trust_check_notes = Column(Text, nullable=True)
+
     created_at = Column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -112,6 +129,10 @@ class Result(Base):
     __table_args__ = (
         CheckConstraint(
             "flag IN ('low', 'normal', 'high')", name="ck_results_flag_valid_values"
+        ),
+        CheckConstraint(
+            "trust_status IN ('trusted', 'review_required')",
+            name="ck_results_trust_status_valid_values",
         ),
     )
 

@@ -172,7 +172,7 @@ def _fake_ocr_result_with_one_word() -> OcrResult:
     )
 
 
-def test_process_ocr_job_returns_completed_when_extraction_succeeds():
+def test_process_ocr_job_returns_completed_when_extraction_and_trust_checks_succeed():
     job = _fake_job(str(uuid.uuid4()))
     fake_db = MagicMock()
     fake_report = Report(id=job.report_id, storage_key="reports/x/y.png")
@@ -188,12 +188,42 @@ def test_process_ocr_job_returns_completed_when_extraction_succeeds():
             "app.jobs.worker.run_extraction_for_report",
             return_value=ExtractionResult(rows=[]),
         ) as mock_extract,
+        patch(
+            "app.jobs.worker.run_trust_checks_for_report", return_value=True
+        ) as mock_trust,
     ):
         outcome = process_ocr_job(job)
 
     assert outcome == COMPLETED
     mock_extract.assert_called_once_with(fake_db, fake_report, job.id)
+    mock_trust.assert_called_once_with(fake_db, fake_report.id)
     fake_db.close.assert_called_once()
+
+
+def test_process_ocr_job_returns_review_required_when_trust_checks_fail():
+    # Extraction itself succeeded and produced validated rows, but the
+    # trust chain found at least one row it couldn't fully trust - the
+    # job as a whole is not COMPLETED until every row passes.
+    job = _fake_job(str(uuid.uuid4()))
+    fake_db = MagicMock()
+    fake_report = Report(id=job.report_id, storage_key="reports/x/y.png")
+    fake_db.get.return_value = fake_report
+
+    with (
+        patch("app.jobs.worker.SessionLocal", return_value=fake_db),
+        patch(
+            "app.jobs.worker.run_ocr_for_report",
+            return_value=_fake_ocr_result_with_one_word(),
+        ),
+        patch(
+            "app.jobs.worker.run_extraction_for_report",
+            return_value=ExtractionResult(rows=[]),
+        ),
+        patch("app.jobs.worker.run_trust_checks_for_report", return_value=False),
+    ):
+        outcome = process_ocr_job(job)
+
+    assert outcome == REVIEW_REQUIRED
 
 
 def test_process_ocr_job_returns_review_required_when_no_words_are_found():

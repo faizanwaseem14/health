@@ -54,3 +54,13 @@ def test_results_flag_only_allows_low_normal_high():
         "'low'" in c and "'normal'" in c and "'high'" in c for c in check_constraints
     )
     assert not any("critical" in c for c in check_constraints)
+
+
+def test_results_trust_status_only_allows_trusted_or_review_required():
+    results_table = Base.metadata.tables["results"]
+    check_constraints = [
+        c.sqltext.text
+        for c in results_table.constraints
+        if c.__class__.__name__ == "CheckConstraint"
+    ]
+    assert any("'trusted'" in c and "'review_required'" in c for c in check_constraints)

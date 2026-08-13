@@ -50,6 +50,12 @@ _ENV_SPEC = [
 _ALLOWED_OCR_PROVIDERS = {"tesseract", "google_vision"}
 _DEFAULT_OCR_PROVIDER = "tesseract"
 
+# TRUST_CONFIDENCE_THRESHOLD (app/trust/) is the same kind of "has a
+# safe default, tune later" setting as OCR_PROVIDER — not a secret, so
+# it doesn't belong in _ENV_SPEC either. Below this, a result's AI
+# confidence isn't enough to trust it on its own.
+_DEFAULT_TRUST_CONFIDENCE_THRESHOLD = 0.8
+
 
 @dataclass(frozen=True)
 class Settings:
@@ -67,6 +73,7 @@ class Settings:
     ocr_provider: str
     google_vision_api_key: str | None
     anthropic_api_key: str
+    trust_confidence_threshold: float
 
 
 def load_settings() -> Settings:
@@ -115,6 +122,27 @@ def load_settings() -> Settings:
             "instead.\n"
         )
 
+    trust_threshold_raw = os.environ.get(
+        "TRUST_CONFIDENCE_THRESHOLD", ""
+    ).strip() or str(_DEFAULT_TRUST_CONFIDENCE_THRESHOLD)
+    try:
+        trust_confidence_threshold = float(trust_threshold_raw)
+    except ValueError:
+        raise RuntimeError(
+            "\n\n"
+            "MedVault cannot start: TRUST_CONFIDENCE_THRESHOLD="
+            f"{trust_threshold_raw!r} is not a valid number.\n\n"
+            "Fix: set it to a decimal between 0.0 and 1.0 in backend/.env (e.g. 0.8), "
+            "or leave it unset to use the default.\n"
+        )
+    if not 0.0 <= trust_confidence_threshold <= 1.0:
+        raise RuntimeError(
+            "\n\n"
+            "MedVault cannot start: TRUST_CONFIDENCE_THRESHOLD="
+            f"{trust_confidence_threshold!r} is out of range.\n\n"
+            "Must be between 0.0 and 1.0 (inclusive).\n"
+        )
+
     return Settings(
         database_url=values["DATABASE_URL"],
         firebase_service_account_json=values["FIREBASE_SERVICE_ACCOUNT_JSON"],
@@ -128,6 +156,7 @@ def load_settings() -> Settings:
         ocr_provider=ocr_provider,
         google_vision_api_key=values["GOOGLE_VISION_API_KEY"],
         anthropic_api_key=values["ANTHROPIC_API_KEY"],
+        trust_confidence_threshold=trust_confidence_threshold,
     )
 
 
