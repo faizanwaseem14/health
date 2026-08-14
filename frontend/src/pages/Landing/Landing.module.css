@@ -1,0 +1,143 @@
+.hero {
+  position: relative;
+  overflow: hidden;
+  padding-block: var(--space-9) var(--space-8);
+}
+
+.heroMotif {
+  position: absolute;
+  top: 50%;
+  right: -18%;
+  width: 60rem;
+  max-width: none;
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.heroInner {
+  position: relative;
+  z-index: 1;
+  max-width: 42rem;
+}
+
+.eyebrow {
+  display: inline-block;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-brand);
+  background: var(--color-surface-brand);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
+  margin-bottom: var(--space-5);
+}
+
+.heroHeadline {
+  font-size: var(--text-4xl);
+  color: var(--color-text);
+  margin-bottom: var(--space-5);
+}
+
+.heroSubhead {
+  font-size: var(--text-lg);
+  line-height: var(--leading-snug);
+  color: var(--color-text-muted);
+  max-width: 38ch;
+  margin-bottom: var(--space-7);
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.section {
+  padding-block: var(--space-8);
+}
+
+.sectionHeading {
+  font-size: var(--text-2xl);
+  margin-bottom: var(--space-6);
+}
+
+.valueGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-5);
+}
+
+@media (min-width: 640px) {
+  .valueGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .valueGrid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.valueCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.valueIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-brand);
+  color: var(--color-brand);
+}
+
+.valueTitle {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  font-family: var(--font-body);
+}
+
+.valueBody {
+  color: var(--color-text-muted);
+  line-height: var(--leading-normal);
+}
+
+.accessibilityCard {
+  max-width: 46rem;
+}
+
+.accessibilityBody {
+  color: var(--color-text-muted);
+  line-height: var(--leading-normal);
+  margin-bottom: var(--space-4);
+}
+
+.accessibilityBody:last-of-type {
+  margin-bottom: var(--space-5);
+}
+
+.badgeRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.badgeCaption {
+  font-size: var(--text-sm);
+  color: var(--color-text-faint);
+}
+
+@media (max-width: 639px) {
+  .heroMotif {
+    right: -40%;
+    opacity: 0.7;
+  }
+}

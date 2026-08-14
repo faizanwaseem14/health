@@ -1,0 +1,29 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  line-height: 1;
+}
+
+.icon {
+  display: inline-flex;
+}
+
+.good {
+  background: var(--color-status-good-bg);
+  color: var(--color-status-good-fg);
+}
+
+.attention {
+  background: var(--color-status-attention-bg);
+  color: var(--color-status-attention-fg);
+}
+
+.review {
+  background: var(--color-status-review-bg);
+  color: var(--color-status-review-fg);
+}

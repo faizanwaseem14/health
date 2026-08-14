@@ -1,0 +1,224 @@
+/*
+  HealthVault design tokens.
+
+  Every color, spacing, radius, shadow, and type value the app uses
+  lives here as a CSS custom property. Components should always reach
+  for a token (var(--color-brand), var(--space-4), ...) instead of a
+  raw hex code or pixel value, so the whole app stays visually
+  consistent and a future palette tweak only ever needs to happen in
+  ONE place.
+
+  Light mode is the default (defined on :root). Dark mode overrides
+  live under [data-theme="dark"] — see src/theme/ThemeProvider.jsx for
+  how that attribute gets set and persisted.
+*/
+
+:root {
+  /* ---------------------------------------------------------------
+     COLOR — raw palette
+     Earthy, warm, calm: sage as the primary brand color, clay/
+     terracotta as a sparing accent, warm sand as the base surface.
+     Named so a future retheme can change ONE value and ripple
+     everywhere it's used semantically below.
+     --------------------------------------------------------------- */
+  --sage-50: #f2f4ee;
+  --sage-100: #e4e9dc;
+  --sage-200: #cbd6ba;
+  --sage-400: #8ba071;
+  --sage-600: #5f7249;
+  --sage-700: #4f5f3d;
+  --sage-800: #3c4a2f;
+
+  --clay-100: #f3e2d8;
+  --clay-400: #c98a68;
+  --clay-600: #a85c3f;
+  --clay-700: #8d4a32;
+
+  --sand-50: #fdfaf5;
+  --sand-100: #faf5ec;
+  --sand-200: #f2e9d8;
+  --sand-300: #e6d9c0;
+
+  --ink-100: #d8d2c6;
+  --ink-400: #665c4b;
+  --ink-700: #453c30;
+  --ink-900: #2a2418;
+
+  --charcoal-950: #1c1712;
+  --charcoal-900: #221d17;
+  --charcoal-800: #2e281f;
+  --charcoal-700: #3b3327;
+  --charcoal-600: #504636;
+
+  --cream-mist: #f1ece1;
+
+  /* Status colors — colorblind-safe, always paired with an icon and a
+     text label in the UI (never color alone). Deliberately distinct
+     in both hue AND lightness from each other and from the brand
+     colors above, so they never get confused with "this is a sage/
+     clay-branded button" vs "this is a status." */
+  --status-good-600: #2e6e5c;
+  --status-good-100: #dcece6;
+  --status-attention-600: #875710;
+  --status-attention-100: #f3e6cb;
+  --status-review-600: #4b6478;
+  --status-review-100: #dfe6ea;
+
+  /* ---------------------------------------------------------------
+     COLOR — semantic tokens (what components should actually use)
+     --------------------------------------------------------------- */
+  --color-bg: var(--sand-100);
+  --color-bg-raised: var(--sand-50);
+  --color-bg-sunken: var(--sand-200);
+  --color-surface-brand: var(--sage-100);
+  --color-surface-accent: var(--clay-100);
+
+  --color-text: var(--ink-900);
+  --color-text-muted: var(--ink-700);
+  --color-text-faint: var(--ink-400);
+  --color-text-on-brand: var(--sand-50);
+
+  --color-border: var(--ink-100);
+  --color-border-strong: var(--ink-400);
+
+  /* Brand/accent as TEXT, icons, links: adapts per theme so it always
+     pops against --color-bg. */
+  --color-brand: var(--sage-700);
+  --color-brand-strong: var(--sage-800);
+  --color-brand-soft: var(--sage-400);
+  --color-accent: var(--clay-600);
+  --color-accent-strong: var(--clay-700);
+
+  /* Solid button fills: deliberately held CONSTANT across themes
+     (not adaptive like --color-brand above) — a dark sage/clay chip
+     with light text reads clearly against both a pale sand page and
+     a dark charcoal page, so buttons don't need separate light/dark
+     contrast math. */
+  --color-button-primary-bg: var(--sage-700);
+  --color-button-primary-bg-hover: var(--sage-800);
+  --color-button-primary-text: var(--sand-50);
+
+  --color-button-accent-bg: var(--clay-600);
+  --color-button-accent-bg-hover: var(--clay-700);
+  --color-button-accent-text: var(--sand-50);
+
+  --color-focus-ring: var(--clay-700);
+
+  --color-status-good-fg: var(--status-good-600);
+  --color-status-good-bg: var(--status-good-100);
+  --color-status-attention-fg: var(--status-attention-600);
+  --color-status-attention-bg: var(--status-attention-100);
+  --color-status-review-fg: var(--status-review-600);
+  --color-status-review-bg: var(--status-review-100);
+
+  --shadow-color: 42, 36, 28;
+  --shadow-sm: 0 1px 3px rgba(var(--shadow-color), 0.1);
+  --shadow-md: 0 6px 20px rgba(var(--shadow-color), 0.1);
+  --shadow-lg: 0 16px 40px rgba(var(--shadow-color), 0.16);
+
+  /* ---------------------------------------------------------------
+     TYPOGRAPHY
+     Fraunces = display/headline serif, used with restraint at large
+     sizes only. Figtree = body/UI sans, used everywhere else, chosen
+     for warmth and legibility. Plex Mono is reserved for numeric lab
+     values/tables in later screens.
+     --------------------------------------------------------------- */
+  --font-display: "Fraunces", "Iowan Old Style", ui-serif, Georgia, serif;
+  --font-body: "Figtree", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* A deliberately larger-than-typical base size: readability for
+     older/low-vision users is a stated requirement, not a nice-to-have. */
+  --text-base: 1.125rem; /* 18px */
+  --text-sm: 1rem; /* 16px — the SMALLEST body text anywhere in the app */
+  --text-lg: 1.25rem; /* 20px */
+  --text-xl: 1.5rem; /* 24px */
+  --text-2xl: 1.875rem; /* 30px */
+  --text-3xl: clamp(2.25rem, 1.9rem + 1.5vw, 3rem); /* 36px -> 48px */
+  --text-4xl: clamp(2.75rem, 2.1rem + 2.8vw, 4.5rem); /* 44px -> 72px */
+
+  --leading-tight: 1.15;
+  --leading-snug: 1.35;
+  --leading-normal: 1.6;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* ---------------------------------------------------------------
+     SPACING — 4px base unit, generous by default (accessibility: no
+     cramped tap targets or crowded layouts).
+     --------------------------------------------------------------- */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+  --space-9: 6rem;
+  --space-10: 8rem;
+
+  /* ---------------------------------------------------------------
+     SHAPE
+     --------------------------------------------------------------- */
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-pill: 999px;
+
+  /* Minimum interactive target size (WCAG 2.5.5 / larger for an
+     older-user audience). Buttons, links-as-buttons, and toggles
+     should never be shorter than this. */
+  --tap-target-min: 3rem; /* 48px */
+
+  --motion-fast: 150ms;
+  --motion-base: 220ms;
+  --motion-ease: cubic-bezier(0.4, 0, 0.2, 1);
+
+  --container-max: 72rem;
+}
+
+/*
+  Dark mode: warm deep charcoal/brown, never cold near-black. Brand
+  colors shift lighter so they keep enough contrast against the dark
+  surface; status colors get slightly brighter foregrounds for the
+  same reason. Everything else (spacing, type, radius) is identical -
+  only color changes between themes.
+*/
+[data-theme="dark"] {
+  --color-bg: var(--charcoal-900);
+  --color-bg-raised: var(--charcoal-800);
+  --color-bg-sunken: var(--charcoal-950);
+  --color-surface-brand: #34402a;
+  --color-surface-accent: #4a3226;
+
+  --color-text: var(--cream-mist);
+  --color-text-muted: #c7bfae;
+  --color-text-faint: #a0957f;
+
+  --color-border: var(--charcoal-600);
+  --color-border-strong: #6b6050;
+
+  --color-brand: #9fb583;
+  --color-brand-strong: #b7cb9f;
+  --color-brand-soft: #7d9463;
+  --color-accent: #e0916d;
+  --color-accent-strong: #eaab8c;
+
+  --color-focus-ring: #eaab8c;
+
+  --color-status-good-fg: #7fcbb2;
+  --color-status-good-bg: #274037;
+  --color-status-attention-fg: #e3b869;
+  --color-status-attention-bg: #453a22;
+  --color-status-review-fg: #9db9cc;
+  --color-status-review-bg: #2c3a45;
+
+  --shadow-color: 10, 8, 6;
+  --shadow-sm: 0 1px 3px rgba(var(--shadow-color), 0.4);
+  --shadow-md: 0 6px 20px rgba(var(--shadow-color), 0.45);
+  --shadow-lg: 0 16px 40px rgba(var(--shadow-color), 0.55);
+}

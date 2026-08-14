@@ -71,18 +71,23 @@ should be treated as a draft to review, not something to trust blindly.
 
 ## Running the frontend
 
+The frontend is the **HealthVault** web app (React + Vite). See
+[`frontend/README.md`](frontend/README.md) for full setup steps, including a
+Windows-specific walkthrough. Quick version (Mac/Linux):
+
 ```bash
 cd frontend
+cp .env.example .env    # first time only
 npm install
 npm run dev
 ```
 
-Then open the URL Vite prints (usually http://127.0.0.1:5173/). You should
-see a plain "MedVault" placeholder page — no real screens yet, that's
-expected for Day 1.
+Then open the URL Vite prints (usually http://127.0.0.1:5173/).
 
 ## Project status
 
-This is Day 1: foundation only (project structure, database schema,
-authentication wiring, storage wiring). No file upload, OCR, AI extraction,
-or results screens exist yet — those come later.
+Day 1 and Day 2 (backend foundation through AI extraction, the trust chain,
+and test-name/unit knowledge) are complete — see `backend/`'s test suite
+(275 tests). Day 3 (the HealthVault frontend) is in progress: the app shell,
+theme system, and landing page exist; login, upload, and results screens are
+still to come.

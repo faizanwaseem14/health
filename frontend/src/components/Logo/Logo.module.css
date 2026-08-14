@@ -1,0 +1,30 @@
+.lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.mark {
+  flex-shrink: 0;
+}
+
+.ringOuter {
+  stroke: var(--color-brand);
+  opacity: 0.55;
+}
+
+.ringMid {
+  stroke: var(--color-accent);
+}
+
+.ringCore {
+  fill: var(--color-brand);
+}
+
+.wordmark {
+  font-family: var(--font-display);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-xl);
+  letter-spacing: -0.01em;
+  color: var(--color-text);
+}
