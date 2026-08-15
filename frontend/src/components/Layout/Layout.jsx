@@ -1,9 +1,12 @@
-import { Outlet } from "react-router-dom";
-import { Logo } from "../Logo/Logo";
+import { Link, Outlet } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 import { ThemeToggle } from "../../theme/ThemeToggle";
+import { Logo } from "../Logo/Logo";
 import styles from "./Layout.module.css";
 
 export function Layout() {
+  const { isAuthenticated } = useAuth();
+
   return (
     <div className={styles.shell}>
       <a href="#main-content" className={styles.skipLink}>
@@ -12,8 +15,15 @@ export function Layout() {
 
       <header className={styles.header}>
         <div className={`container ${styles.headerInner}`}>
-          <Logo />
-          <ThemeToggle />
+          <Link to="/" className={styles.logoLink} aria-label="HealthVault home">
+            <Logo />
+          </Link>
+          <div className={styles.headerActions}>
+            <Link to={isAuthenticated ? "/home" : "/login"} className={styles.accountLink}>
+              {isAuthenticated ? "My account" : "Sign in"}
+            </Link>
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 

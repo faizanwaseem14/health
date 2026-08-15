@@ -28,3 +28,12 @@
   letter-spacing: -0.01em;
   color: var(--color-text);
 }
+
+/* On narrow screens the header needs the room more than the wordmark
+   does - the mark alone (with its aria-label) still identifies
+   HealthVault, including to screen readers. */
+@media (max-width: 480px) {
+  .wordmark {
+    display: none;
+  }
+}

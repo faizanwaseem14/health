@@ -37,6 +37,34 @@
   padding-block: var(--space-4);
 }
 
+.logoLink {
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.accountLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-target-min);
+  padding-inline: var(--space-4);
+  color: var(--color-brand);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-base);
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  transition: background-color var(--motion-fast) var(--motion-ease);
+}
+
+.accountLink:hover {
+  background: var(--color-surface-brand);
+}
+
 .main {
   flex: 1;
 }

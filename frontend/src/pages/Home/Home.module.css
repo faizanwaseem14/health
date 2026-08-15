@@ -1,0 +1,28 @@
+.wrap {
+  display: flex;
+  justify-content: center;
+  padding-block: var(--space-8);
+}
+
+.card {
+  width: 100%;
+  max-width: 32rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.heading {
+  font-size: var(--text-2xl);
+}
+
+.detail {
+  color: var(--color-text);
+  font-size: var(--text-lg);
+}
+
+.note {
+  color: var(--color-text-muted);
+  line-height: var(--leading-normal);
+}
