@@ -20,10 +20,38 @@ export function describeFirebaseError(error) {
   if (error?.name === "TimeoutError") {
     return "This is taking longer than expected. Check your internet connection and try again.";
   }
-  return (
+
+  const message =
     FIREBASE_MESSAGES[error?.code] ??
-    "Something went wrong signing you in. Please try again."
-  );
+    "Something went wrong signing you in. Please try again.";
+
+  // In dev builds only, append Firebase's own error code so it's
+  // visible right on the screen - no need to open DevTools to see
+  // WHICH unmapped error this was. Dead-code-eliminated in production
+  // (import.meta.env.DEV is a literal `false` there), so a real user
+  // never sees this.
+  if (import.meta.env.DEV && error?.code) {
+    return `${message} (${error.code})`;
+  }
+  return message;
+}
+
+/**
+ * Logs everything Firebase actually attached to an auth error - the
+ * plain-language message shown on screen deliberately hides this, but
+ * a raw "400 Bad Request" from identitytoolkit.googleapis.com is
+ * useless for debugging on its own. Call this from every catch block
+ * around a Firebase Auth call, dev or not - it's a console.error, so
+ * it costs nothing in production and never reaches the UI either way.
+ */
+export function logFirebaseAuthError(context, error) {
+  // eslint-disable-next-line no-console
+  console.error(`[HealthVault] Firebase Auth error (${context}):`, {
+    code: error?.code,
+    message: error?.message,
+    customData: error?.customData,
+    raw: error,
+  });
 }
 
 export function describeApiError(error) {

@@ -134,20 +134,44 @@ the backend a signed token to verify and set up your account.
   most common cause locally is the backend not running, or CORS blocking
   the request because the backend was started before `app/main.py`'s CORS
   settings existed — pull the latest backend code and restart it.
-- **Stuck on "Sending code…" forever, no error at all** — this was a real
-  bug: `signInWithPhoneNumber` depends on Google's reCAPTCHA script
-  loading in the browser, which can silently stall (no thrown error) if
-  it's blocked by an ad blocker, a corporate network, or a slow
-  connection. Fixed two ways in `src/lib/firebase.js` and
-  `src/pages/Login/Login.jsx`: local dev now sets Firebase's own
-  `appVerificationDisabledForTesting` flag (skips the reCAPTCHA
-  challenge entirely when testing with a Firebase console "phone number
-  for testing" - never enabled in a production build), and every
-  Firebase call now has a 20-second timeout so it fails with a clear
-  message instead of hanging forever even if something else stalls it.
-  If you still see this after pulling the latest code, check the
-  Network tab for a request to `google.com/recaptcha` or
-  `identitytoolkit.googleapis.com` that never completes.
+- **Stuck on "Sending code…" forever, no error at all** — `signInWithPhoneNumber`
+  depends on Google's reCAPTCHA script loading in the browser, which can
+  silently stall (no thrown error) if it's blocked by an ad blocker, a
+  corporate network, or a slow connection. Every Firebase call now has a
+  20-second timeout (`src/lib/withTimeout.js`) so it fails with a clear
+  message instead of hanging forever even if something stalls it.
+- **An error appears after "Send code", and it ends with a code in
+  parentheses** like `(auth/invalid-app-credential)` or a bare
+  `Something went wrong signing you in. (400)` — that code is Firebase's
+  own, shown only in dev builds so you don't need DevTools open to see
+  it. Open the browser console (`F12`) too: every failed attempt logs a
+  `[HealthVault] Firebase Auth error (...)` entry with the full error
+  object, including anything Firebase attached in `customData` — that's
+  the most reliable way to see *why* a request was rejected, not just
+  that it was.
+  - **`Failed to initialize reCAPTCHA Enterprise config...` followed by a
+    400 from `identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode`**
+    — this means the Firebase project itself is enrolled in Google's
+    newer reCAPTCHA Enterprise-based phone-auth protection, and that
+    enrollment isn't fully configured on the Firebase/GCP side. Local
+    dev already sets Firebase's `appVerificationDisabledForTesting` flag
+    (see `src/lib/firebase.js`) to ask Firebase to skip reCAPTCHA
+    entirely for a configured "phone number for testing" — but it's a
+    request, not a guarantee, and a project enrolled in reCAPTCHA
+    Enterprise can still reject the request before that flag is
+    consulted. This is a Firebase/GCP **console-side** setting, not
+    something fixable from this repo's code. In Firebase console →
+    Authentication → Sign-in method → Phone, check whether "reCAPTCHA
+    Enterprise" is shown as enabled — if so, either finish that setup
+    (link a GCP project, enable the reCAPTCHA Enterprise API, create a
+    site key for this domain) or look for an option to use classic
+    reCAPTCHA v2 for phone auth instead. Also double-check the test
+    number is entered in Firebase console *exactly* as `+44 7700 900123`
+    (with the country code and matching formatting) — a mismatched test
+    number falls back to the real, non-test verification path, which
+    also triggers full reCAPTCHA. The logged error's `customData` (see
+    above) may also carry a Google-provided explanation string worth
+    reading directly.
 - **"That code didn't match"** — double check you typed the exact test
   code configured in Firebase console for that exact test number; a typo
   in either one fails the same way a real wrong code would.

@@ -37,20 +37,26 @@ export const auth = isFirebaseConfigured
   ? getAuth(initializeApp(firebaseConfig))
   : null;
 
-// DEV-ONLY: skips the reCAPTCHA challenge entirely for phone sign-in.
-// This is Firebase's own documented flag for local testing against a
-// "phone number for testing" configured in Firebase console
-// (console -> Authentication -> Sign-in method -> Phone) - without it,
-// signInWithPhoneNumber depends on Google's reCAPTCHA script loading
-// and resolving in the browser, which can silently hang forever (no
-// thrown error, just a stuck "Sending code...") if that script is
-// blocked by an ad blocker, a corporate network, or a flaky
-// connection - exactly the symptom this fixes.
+// DEV-ONLY: asks Firebase to skip the reCAPTCHA challenge for phone
+// sign-in against a "phone number for testing" configured in Firebase
+// console (console -> Authentication -> Sign-in method -> Phone).
 //
-// import.meta.env.DEV is Vite's own "am I running `npm run dev`"
-// flag - it's `false` (and this whole branch is dead-code-eliminated)
-// in a production build, so this can never end up disabling real
-// phone verification for real users.
+// This is Firebase's own documented flag for exactly that case - but
+// it's a REQUEST, not a guarantee: if the underlying Firebase project
+// is enrolled in Google's newer reCAPTCHA-based phone-auth abuse
+// protection (increasingly the default for projects created after
+// 2023) and that reCAPTCHA integration itself isn't fully configured,
+// the backend can still reject the request before this flag ever gets
+// consulted - that shows up as the SDK logging "Failed to initialize
+// reCAPTCHA Enterprise config..." and a 400 from
+// identitytoolkit.googleapis.com's sendVerificationCode, regardless of
+// this flag. See src/pages/Login/Login.jsx's error handling, which
+// logs Firebase's actual error code/message to the console specifically
+// so that case is diagnosable instead of a bare "400".
+//
+// import.meta.env.DEV is Vite's own "am I running `npm run dev`" flag
+// - it's `false` (and this whole branch is dead-code-eliminated) in a
+// production build, so this can never end up disabled for real users.
 if (isFirebaseConfigured && import.meta.env.DEV) {
   auth.settings.appVerificationDisabledForTesting = true;
 }

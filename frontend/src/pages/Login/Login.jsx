@@ -6,7 +6,11 @@ import { Card } from "../../components/Card/Card";
 import { Input } from "../../components/Input/Input";
 import { useAuth } from "../../context/AuthContext";
 import { ApiError, apiFetch } from "../../lib/apiClient";
-import { describeApiError, describeFirebaseError } from "../../lib/authErrors";
+import {
+  describeApiError,
+  describeFirebaseError,
+  logFirebaseAuthError,
+} from "../../lib/authErrors";
 import { auth, isFirebaseConfigured } from "../../lib/firebase";
 import { toE164 } from "../../lib/phone";
 import { withTimeout } from "../../lib/withTimeout";
@@ -52,14 +56,20 @@ export function Login() {
     };
   }, []);
 
-  function getRecaptchaVerifier() {
-    if (!recaptchaVerifierRef.current) {
-      recaptchaVerifierRef.current = new RecaptchaVerifier(
-        auth,
-        recaptchaContainerRef.current,
-        { size: "invisible" },
-      );
-    }
+  // Builds a brand-new verifier for every send attempt, rather than
+  // reusing one across attempts: a verifier that has already rendered
+  // (or already failed) can silently interfere with a retry, and
+  // explicitly awaiting render() here means any reCAPTCHA-side setup
+  // failure surfaces as a thrown error right here - not as a mysterious
+  // stall inside signInWithPhoneNumber.
+  async function getRecaptchaVerifier() {
+    recaptchaVerifierRef.current?.clear();
+    recaptchaVerifierRef.current = new RecaptchaVerifier(
+      auth,
+      recaptchaContainerRef.current,
+      { size: "invisible" },
+    );
+    await recaptchaVerifierRef.current.render();
     return recaptchaVerifierRef.current;
   }
 
@@ -80,7 +90,7 @@ export function Login() {
         body: { phone_number: e164Phone },
       });
 
-      const verifier = getRecaptchaVerifier();
+      const verifier = await getRecaptchaVerifier();
       const result = await withTimeout(
         signInWithPhoneNumber(auth, e164Phone, verifier),
         FIREBASE_CALL_TIMEOUT_MS,
@@ -91,6 +101,9 @@ export function Login() {
       setCodeInput("");
       setStep(STEP_CODE);
     } catch (error) {
+      if (!(error instanceof ApiError)) {
+        logFirebaseAuthError("send-code", error);
+      }
       setPhoneError(
         error instanceof ApiError ? describeApiError(error) : describeFirebaseError(error),
       );
@@ -124,6 +137,7 @@ export function Login() {
       // state until that finishes (see RequireAuth).
       navigate("/home", { replace: true });
     } catch (error) {
+      logFirebaseAuthError("verify-code", error);
       setCodeError(describeFirebaseError(error));
     } finally {
       setIsVerifying(false);
