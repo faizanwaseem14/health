@@ -26,13 +26,21 @@ retry_failed_job) is mocked here too, for the same reason.
 
 import io
 import uuid
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
 from PIL import Image
 
 from app.auth.dependencies import get_current_user
-from app.jobs.service import COMPLETED, FAILED, QUEUED, JobNotRetryableError
+from app.jobs.service import (
+    COMPLETED,
+    FAILED,
+    PROCESSING,
+    QUEUED,
+    REVIEW_REQUIRED,
+    JobNotRetryableError,
+)
 from app.main import app
 from app.models import Job, Profile, Report, User
 from app.routers.reports import require_owned_profile, require_owned_report
@@ -294,3 +302,185 @@ def test_retry_succeeds_for_a_genuinely_failed_job():
     assert body["data"]["job_id"] == str(retried_job.id)
     assert body["data"]["job_status"] == QUEUED
     mock_retry.assert_called_once_with(fake_db, old_job.id)
+
+
+# --- GET /reports/{row_id} ---
+
+
+def test_get_report_requires_login():
+    response = client.get(f"/reports/{uuid.uuid4()}")
+
+    assert response.status_code == 401
+
+
+def test_get_report_rejects_someone_elses_report():
+    user = User(id=uuid.uuid4(), phone_number="+15551234567")
+    app.dependency_overrides[get_current_user] = lambda: user
+    # Same reasoning as the retry route's equivalent test: not
+    # overriding require_owned_report hits a real (fake, localhost) DB
+    # lookup and fails fast - a fine proxy for "not overridden".
+    try:
+        response = client.get(f"/reports/{uuid.uuid4()}")
+    finally:
+        _clear_overrides()
+
+    assert response.status_code in (404, 503)
+
+
+def test_get_report_returns_the_reports_status_and_its_latest_job():
+    report = Report(
+        id=uuid.uuid4(),
+        profile_id=uuid.uuid4(),
+        status="processing",
+        original_filename="labs.pdf",
+        mime_type="application/pdf",
+        created_at=datetime.now(timezone.utc),
+    )
+    job = Job(id=uuid.uuid4(), report_id=report.id, job_type="ocr_extraction")
+    job.status = PROCESSING
+    app.dependency_overrides[get_current_user] = lambda: User(id=uuid.uuid4())
+    app.dependency_overrides[require_owned_report] = lambda: report
+
+    try:
+        with patch("app.routers.reports.get_latest_job_for_report", return_value=job):
+            response = client.get(f"/reports/{report.id}")
+    finally:
+        _clear_overrides()
+
+    assert response.status_code == 200
+    body = response.json()["data"]
+    assert body["id"] == str(report.id)
+    assert body["status"] == "processing"
+    assert body["original_filename"] == "labs.pdf"
+    assert body["job_id"] == str(job.id)
+    assert body["job_status"] == PROCESSING
+    assert body["job_error_message"] is None
+
+
+def test_get_report_tells_review_required_apart_from_still_processing():
+    # report.status stays "processing" while a job is review_required
+    # (see app/jobs/service.py) - the frontend needs job_status, not
+    # just report.status, to show the right screen.
+    report = Report(
+        id=uuid.uuid4(),
+        profile_id=uuid.uuid4(),
+        status="processing",
+        original_filename="labs.pdf",
+        mime_type="application/pdf",
+        created_at=datetime.now(timezone.utc),
+    )
+    job = Job(id=uuid.uuid4(), report_id=report.id, job_type="ocr_extraction")
+    job.status = REVIEW_REQUIRED
+    app.dependency_overrides[get_current_user] = lambda: User(id=uuid.uuid4())
+    app.dependency_overrides[require_owned_report] = lambda: report
+
+    try:
+        with patch("app.routers.reports.get_latest_job_for_report", return_value=job):
+            response = client.get(f"/reports/{report.id}")
+    finally:
+        _clear_overrides()
+
+    assert response.json()["data"]["job_status"] == REVIEW_REQUIRED
+
+
+def test_get_report_surfaces_the_jobs_error_message_when_failed():
+    report = Report(
+        id=uuid.uuid4(),
+        profile_id=uuid.uuid4(),
+        status=FAILED,
+        original_filename="labs.pdf",
+        mime_type="application/pdf",
+        created_at=datetime.now(timezone.utc),
+    )
+    job = Job(id=uuid.uuid4(), report_id=report.id, job_type="ocr_extraction")
+    job.status = FAILED
+    job.error_message = "OCR provider timed out."
+    app.dependency_overrides[get_current_user] = lambda: User(id=uuid.uuid4())
+    app.dependency_overrides[require_owned_report] = lambda: report
+
+    try:
+        with patch("app.routers.reports.get_latest_job_for_report", return_value=job):
+            response = client.get(f"/reports/{report.id}")
+    finally:
+        _clear_overrides()
+
+    assert response.json()["data"]["job_error_message"] == "OCR provider timed out."
+
+
+def test_get_report_handles_no_job_existing_yet():
+    report = Report(
+        id=uuid.uuid4(),
+        profile_id=uuid.uuid4(),
+        status="uploaded",
+        original_filename="labs.pdf",
+        mime_type="application/pdf",
+        created_at=datetime.now(timezone.utc),
+    )
+    app.dependency_overrides[get_current_user] = lambda: User(id=uuid.uuid4())
+    app.dependency_overrides[require_owned_report] = lambda: report
+
+    try:
+        with patch("app.routers.reports.get_latest_job_for_report", return_value=None):
+            response = client.get(f"/reports/{report.id}")
+    finally:
+        _clear_overrides()
+
+    body = response.json()["data"]
+    assert body["job_id"] is None
+    assert body["job_status"] is None
+
+
+# --- GET /profiles/{row_id}/reports ---
+
+
+def test_list_reports_for_profile_requires_login():
+    response = client.get(f"/profiles/{uuid.uuid4()}/reports")
+
+    assert response.status_code == 401
+
+
+def test_list_reports_for_profile_returns_each_reports_status():
+    user = User(id=uuid.uuid4(), phone_number="+15551234567")
+    profile = Profile(id=uuid.uuid4(), user_id=user.id, full_name="Alice")
+    older_report = Report(
+        id=uuid.uuid4(),
+        profile_id=profile.id,
+        status=COMPLETED,
+        original_filename="old.pdf",
+        mime_type="application/pdf",
+        created_at=datetime(2025, 1, 1, tzinfo=timezone.utc),
+    )
+    newer_report = Report(
+        id=uuid.uuid4(),
+        profile_id=profile.id,
+        status="processing",
+        original_filename="new.pdf",
+        mime_type="application/pdf",
+        created_at=datetime(2025, 6, 1, tzinfo=timezone.utc),
+    )
+    fake_db = MagicMock()
+    query_chain = fake_db.query.return_value.filter.return_value.order_by.return_value
+    query_chain.all.return_value = [newer_report, older_report]
+
+    from app.auth.dependencies import get_db
+
+    app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[require_owned_profile] = lambda: profile
+    app.dependency_overrides[get_db] = lambda: fake_db
+
+    def fake_latest_job(db, report_id):
+        return None
+
+    try:
+        with patch(
+            "app.routers.reports.get_latest_job_for_report", side_effect=fake_latest_job
+        ):
+            response = client.get(f"/profiles/{profile.id}/reports")
+    finally:
+        _clear_overrides()
+
+    assert response.status_code == 200
+    body = response.json()["data"]
+    assert [row["id"] for row in body] == [str(newer_report.id), str(older_report.id)]
+    assert body[0]["status"] == "processing"
+    assert body[1]["status"] == COMPLETED

@@ -204,6 +204,76 @@ these, and nothing is billed.
   code configured in Firebase console for that exact test number; a typo
   in either one fails the same way a real wrong code would.
 
+## Uploading and processing a report
+
+Once you're signed in, HealthVault can accept a lab report photo or PDF,
+store it, and process it (OCR → AI extraction → trust checks) in the
+background. Testing this needs a THIRD process, on top of the backend API
+and the frontend:
+
+1. **Start the background worker** in its own terminal (separate from
+   the `uvicorn` one):
+
+   ```powershell
+   cd backend
+   .venv\Scripts\activate
+   python -m app.jobs.worker
+   ```
+
+   This is what actually processes an upload — without it running, a
+   report will sit at "Waiting to start" forever (harmlessly; nothing is
+   lost, the worker just picks it up whenever it starts). Leave it
+   running alongside the backend and frontend.
+
+2. **For processing to actually complete** (not just move to
+   "Processing" and then fail), `backend/.env` needs real credentials for
+   Cloudflare R2 (`R2_*`) and Claude (`ANTHROPIC_API_KEY`) — see the root
+   [`SETUP.md`](../SETUP.md). `OCR_PROVIDER=tesseract` (the default) needs
+   the Tesseract binary installed locally; see the root
+   [`README.md`](../README.md) if OCR fails specifically.
+
+3. **From Home, select "Upload a lab report"**, then either **Take a
+   photo** (opens your camera on a phone/laptop with one) or **Choose a
+   file** (any JPEG, PNG, HEIC, or PDF up to 25MB).
+
+4. **Check the preview.** For a photo, HealthVault runs a few quick,
+   local checks — blur, brightness/glare, resolution, cut-off edges, and
+   (for JPEGs) sideways orientation — and shows any as gentle warnings
+   right on the preview. These never block you; the button still says
+   "Upload anyway" if you'd rather proceed. Select **Replace or remove**
+   to pick a different file instead.
+
+5. **Select Confirm & upload** (or **Upload anyway**). You're taken to a
+   processing screen with an animated "working on it" indicator and
+   cycling status messages — this is normal and can take anywhere from a
+   few seconds to a couple of minutes depending on the file and which OCR
+   provider is configured.
+
+6. **Try leaving the screen**: select the "Safe to leave" link (or just
+   navigate to Home). Processing keeps going in the background regardless
+   — your report shows up in the "Your reports" list on Home with its
+   current status, and reopening it (tap the row) picks the live status
+   back up, exactly where it left off.
+
+7. **What you should see when it finishes**: a status badge changes to
+   one of **Done** (select **View results** — a placeholder for now; the
+   real results screen is a later part of HealthVault), **Needs a quick
+   review** (a normal outcome for a hard-to-read scan, not an error), or
+   **Couldn't process** (select **Try again** to retry — your original
+   file is untouched and doesn't need re-uploading).
+
+### If upload/processing doesn't work
+
+- **Stuck on "Waiting to start" indefinitely** — the worker (step 1
+  above) isn't running, or crashed. Check that terminal for errors.
+- **Always ends up "Couldn't process"** — open the failed report; the
+  technical detail shown there (and the worker's own terminal output) is
+  usually the real reason — most commonly a missing/placeholder R2 or
+  Anthropic credential in `backend/.env` (see step 2 above).
+- **"That file is too large" / "doesn't look like a photo or PDF..."** —
+  these are real limits (25MB max; JPEG, PNG, HEIC, or PDF only) enforced
+  both instantly in the browser and again by the backend — not a bug.
+
 ## Running it on Mac/Linux
 
 Same steps, using a regular terminal. To test sign-in, run these in two
@@ -250,10 +320,15 @@ src/
 │   └── RequireProfile.jsx  Route guard: sends visitors with no profile yet
 │                           to /profile-setup.
 ├── lib/
-│   ├── apiClient.js       Fetch wrapper using VITE_API_BASE_URL.
+│   ├── apiClient.js       Fetch wrapper using VITE_API_BASE_URL (JSON or
+│   │                      FormData bodies).
 │   ├── firebase.js        Firebase client init from VITE_FIREBASE_* env vars.
 │   ├── phone.js           Turns typed input into the E.164 format Firebase needs.
-│   └── authErrors.js      Firebase/backend errors -> plain-language messages.
+│   ├── authErrors.js      Firebase/backend errors -> plain-language messages.
+│   ├── imageQualityChecks.js  Client-side blur/dark/glare/resolution/cut-off/
+│   │                          rotation heuristics, run before an upload.
+│   └── reportStatus.js    report+job status -> a <StatusBadge> tone + label,
+│                          shared by Home's list and the processing screen.
 ├── components/            Shared, reusable pieces every screen can use:
 │   ├── Button/               primary / accent / secondary / ghost variants
 │   ├── Card/                 the one surface/panel component
@@ -261,6 +336,8 @@ src/
 │   ├── Logo/                 the HealthVault mark + wordmark
 │   ├── Layout/                header + footer shell wrapping every page
 │   ├── LoadingScreen/        shown while a route guard is resolving
+│   ├── ProcessingAnimation/  the playful "working on it" visual + cycling
+│   │                          reassurance messages for the processing screen
 │   ├── StatusBadge/          the ONLY way a result's status is ever shown —
 │   │                          always icon + color + word together
 │   └── ContourMotif/          the signature background pattern
@@ -268,8 +345,16 @@ src/
     ├── Landing/            The public landing page.
     ├── Login/               Phone number -> 6-digit code -> signed in.
     ├── ProfileSetup/        First-time-only "who are these records for".
-    └── Home/                 Minimal signed-in confirmation screen (upload/
-                              results screens come in a later step).
+    ├── Home/                 Signed-in home base: upload entry point +
+    │                        the profile's report list.
+    ├── Upload/               Capture/choose a file, preview it, quality
+    │                        warnings, confirm -> uploads and kicks off
+    │                        processing.
+    ├── Processing/           Polls a report's job status live; the playful
+    │                        loading state, review/done/failed outcomes,
+    │                        and retry.
+    └── ReportResults/        Placeholder "your report is ready" screen -
+                              the real results UI is a later part.
 ```
 
 ## Design system, in brief

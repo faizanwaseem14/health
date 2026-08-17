@@ -22,7 +22,7 @@ from app.jobs.service import (
     get_latest_job_for_report,
     retry_failed_job,
 )
-from app.models import Profile, Report, User
+from app.models import Job, Profile, Report, User
 from app.storage.file_validation import (
     EXTENSION_BY_MIME_TYPE,
     read_upload_within_size_limit,
@@ -129,6 +129,66 @@ async def upload_report(
         },
         status_code=201,
     )
+
+
+def _report_response(report: Report, job: Job | None) -> dict:
+    return {
+        "id": str(report.id),
+        "profile_id": str(report.profile_id),
+        "status": report.status,
+        "original_filename": report.original_filename,
+        "mime_type": report.mime_type,
+        "created_at": report.created_at.isoformat(),
+        "job_id": str(job.id) if job else None,
+        # A job stuck at "review_required" leaves report.status at
+        # "processing" (see app/jobs/service.py) - the frontend needs
+        # job_status, not just report.status, to tell that case apart
+        # from genuinely still-processing.
+        "job_status": job.status if job else None,
+        "job_error_message": job.error_message if job else None,
+    }
+
+
+@router.get("/reports/{row_id}")
+def get_report(
+    report: Report = Depends(require_owned_report),
+    db: Session = Depends(get_db),
+):
+    """
+    PROTECTED route: the current status of one report and its latest
+    processing job - what the frontend polls while a report is
+    uploading/processing, including after the user has navigated away
+    and come back.
+    """
+    job = get_latest_job_for_report(db, report.id)
+    return success_response(_report_response(report, job))
+
+
+@router.get("/profiles/{row_id}/reports")
+def list_reports_for_profile(
+    profile: Profile = Depends(require_owned_profile),
+    db: Session = Depends(get_db),
+):
+    """
+    PROTECTED route: every report ever uploaded under a profile the
+    logged-in user owns, most recent first - lets the frontend show a
+    profile's upload history and let someone jump back into a report
+    that's still processing.
+    """
+    reports = (
+        db.query(Report)
+        .filter(Report.profile_id == profile.id)
+        .order_by(Report.created_at.desc())
+        .all()
+    )
+    # One extra query per report to find its latest job - fine at this
+    # scale (a person's own lab reports, not a bulk listing); worth
+    # batching only if that ever changes.
+    data = [
+        _report_response(report, get_latest_job_for_report(db, report.id))
+        for report in reports
+    ]
+    return success_response(data)
 
 
 @router.post("/reports/{row_id}/retry")

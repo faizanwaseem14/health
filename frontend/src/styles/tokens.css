@@ -63,6 +63,11 @@
   --status-attention-100: #f3e6cb;
   --status-review-600: #4b6478;
   --status-review-100: #dfe6ea;
+  /* "Still working on it" - queued/processing, not yet a judgment
+     either way, so it deliberately sits apart in hue from good
+     (green), attention (amber), and review (blue-gray). */
+  --status-pending-600: #6b6355;
+  --status-pending-100: #e9e2d3;
 
   /* ---------------------------------------------------------------
      COLOR — semantic tokens (what components should actually use)
@@ -110,6 +115,8 @@
   --color-status-attention-bg: var(--status-attention-100);
   --color-status-review-fg: var(--status-review-600);
   --color-status-review-bg: var(--status-review-100);
+  --color-status-pending-fg: var(--status-pending-600);
+  --color-status-pending-bg: var(--status-pending-100);
 
   --shadow-color: 42, 36, 28;
   --shadow-sm: 0 1px 3px rgba(var(--shadow-color), 0.1);
@@ -218,6 +225,8 @@
   --color-status-attention-bg: #453a22;
   --color-status-review-fg: #9db9cc;
   --color-status-review-bg: #2c3a45;
+  --color-status-pending-fg: #bdb2a0;
+  --color-status-pending-bg: #3a3327;
 
   --shadow-color: 10, 8, 6;
   --shadow-sm: 0 1px 3px rgba(var(--shadow-color), 0.4);

@@ -68,6 +68,15 @@ export function describeApiError(error) {
   if (error?.status === 401) {
     return "Your session has expired. Please sign in again.";
   }
+  if (error?.status === 413) {
+    return "That file is too large — HealthVault accepts files up to 25MB.";
+  }
+  if (error?.status === 415) {
+    return "That doesn't look like a photo or PDF HealthVault can read — try a JPEG, PNG, HEIC, or PDF file.";
+  }
+  if (error?.status === 409) {
+    return "That can't be retried right now — it may have already finished or started again.";
+  }
   if (typeof error?.body?.detail === "string") {
     // Only a small, known set of backend messages are written for a
     // reader, not a developer (see app/core/errors.py) - safe to show

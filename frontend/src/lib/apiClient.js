@@ -27,14 +27,19 @@ class ApiError extends Error {
  * standard error envelope) instead of a generic fetch failure.
  */
 export async function apiFetch(path, { method = "GET", body, headers, ...rest } = {}) {
+  // FormData (a file upload) must go through untouched - fetch sets its
+  // own multipart Content-Type (with the boundary) as long as we don't
+  // set one ourselves. Everything else is sent as JSON, as before.
+  const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
     headers: {
       Accept: "application/json",
-      ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+      ...(body !== undefined && !isFormData ? { "Content-Type": "application/json" } : {}),
       ...headers,
     },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: body === undefined ? undefined : isFormData ? body : JSON.stringify(body),
     ...rest,
   });
 
