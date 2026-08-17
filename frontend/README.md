@@ -78,8 +78,15 @@ The page live-reloads: while the dev server is running, saving any file in
 ## Setting up sign-in locally
 
 Sign-in needs BOTH the frontend and the backend running at the same time —
-the frontend talks to Firebase directly to send/check the code, then hands
-the backend a signed token to verify and set up your account.
+the frontend talks to Firebase directly to sign you in, then hands the
+backend a signed token to verify and set up your account.
+
+**Google sign-in is the primary method** ("Continue with Google" on the
+Login screen) — it needs no reCAPTCHA setup and works reliably on
+localhost. Phone number sign-in still exists (tap "Sign in with a phone
+number instead" on the Login screen) but is secondary for now, since it
+depends on Firebase's reCAPTCHA step working correctly for your project —
+see the phone-specific troubleshooting below if you use it.
 
 1. **Fill in `frontend/.env`** with your Firebase project's values
    (`VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`,
@@ -89,7 +96,14 @@ the backend a signed token to verify and set up your account.
    plain "sign-in isn't set up yet" message instead of crashing — that's
    expected, just fill them in and restart `npm run dev`.
 
-2. **Start the backend** in a separate PowerShell/terminal window (see the
+2. **Enable Google as a sign-in provider** in Firebase console →
+   Authentication → Sign-in method → Google → Enable. Firebase handles the
+   OAuth consent screen for you; you don't need your own Google Cloud
+   OAuth client for this to work locally. `localhost` needs to be in
+   Firebase console → Authentication → Settings → Authorized domains — it's
+   there by default on a new project.
+
+3. **Start the backend** in a separate PowerShell/terminal window (see the
    root [`README.md`](../README.md) for full backend setup):
 
    ```powershell
@@ -103,32 +117,50 @@ the backend a signed token to verify and set up your account.
    `app/main.py`'s CORS settings) to accept requests from the frontend dev
    server at `http://localhost:5173`.
 
-3. **Start the frontend** in its own window, as described above
+4. **Start the frontend** in its own window, as described above
    (`npm run dev`), and open `http://127.0.0.1:5173/`.
 
-4. **Click "Sign in"** in the header, then **enter the test phone number**
-   you configured in Firebase console → Authentication → Sign-in method →
-   Phone → "Phone numbers for testing" (e.g. `+1 650-555-3434`), and select
-   **Send code**.
+5. **Click "Sign in"** in the header, then select **Continue with Google**
+   and pick any real Google account in the popup that opens.
 
-5. **Enter the test verification code** you set for that number in the same
-   Firebase console screen (e.g. `123456`) and select **Verify code**. No
-   real SMS is sent and nothing is billed — that's the whole point of a
-   configured test number.
+6. **What you should see**: after the popup closes, you're taken to a
+   "Set up your profile" screen (first time only) — fill in a name and
+   select **Continue** — and then a "Welcome" screen confirming you're
+   signed in, with a **Sign out** button. Refresh the page: you should stay
+   signed in (Firebase persists the session). Select **Sign out**, then
+   sign in again with the same Google account: this time you should land
+   straight on the "Welcome" screen, skipping profile setup, since
+   HealthVault already has a profile for you.
 
-6. **What you should see**: you're taken to a "Set up your profile" screen
-   (first time only) — fill in a name and select **Continue** — and then a
-   "Welcome" screen confirming you're signed in, with a **Sign out**
-   button. Refresh the page: you should stay signed in (Firebase persists
-   the session). Select **Sign out**, then sign in again with the same
-   test number: this time you should land straight on the "Welcome" screen,
-   skipping profile setup, since HealthVault already has a profile for you.
-
-### If sign-in doesn't work
+### If Google sign-in doesn't work
 
 - **"Sign-in isn't set up yet" won't go away after filling in `.env`** —
   Vite only reads `.env` when it starts, so stop the dev server
   (`Ctrl+C`) and run `npm run dev` again.
+- **Nothing happens when you click "Continue with Google" / a popup flashes
+  and closes immediately** — your browser (or an extension) is blocking
+  the popup. Allow popups for `localhost` and try again; the error shown
+  on screen (`Your browser blocked the sign-in popup...`) says this
+  directly.
+- **"An account already exists with this email using a different sign-in
+  method"** — that Google account's email already has a HealthVault user
+  under a different Firebase sign-in method; this is a real edge case
+  Firebase itself reports, not something to work around locally.
+- **Any other error after the popup closes** — open the browser's DevTools
+  console (`F12`): every failed attempt logs a `[HealthVault] Firebase
+  Auth error (google-sign-in)` entry with Firebase's full error object.
+  Also check that the backend is running and reachable (see step 2 above)
+  — Google sign-in itself can succeed with the backend down, but the app
+  won't consider you signed in until `/auth/me` responds.
+
+### If phone sign-in (secondary) doesn't work
+
+Tap "Sign in with a phone number instead" on the Login screen to reach it.
+You'll need a **phone number for testing** configured in Firebase console →
+Authentication → Sign-in method → Phone → "Phone numbers for testing"
+first (e.g. `+1 650-555-3434` / `123456`) — no real SMS is sent for one of
+these, and nothing is billed.
+
 - **The code screen never appears / an error shows after "Send code"** —
   open the browser's DevTools console (`F12`) for the real error. The
   most common cause locally is the backend not running, or CORS blocking
@@ -153,25 +185,21 @@ the backend a signed token to verify and set up your account.
     400 from `identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode`**
     — this means the Firebase project itself is enrolled in Google's
     newer reCAPTCHA Enterprise-based phone-auth protection, and that
-    enrollment isn't fully configured on the Firebase/GCP side. Local
-    dev already sets Firebase's `appVerificationDisabledForTesting` flag
-    (see `src/lib/firebase.js`) to ask Firebase to skip reCAPTCHA
-    entirely for a configured "phone number for testing" — but it's a
-    request, not a guarantee, and a project enrolled in reCAPTCHA
-    Enterprise can still reject the request before that flag is
-    consulted. This is a Firebase/GCP **console-side** setting, not
-    something fixable from this repo's code. In Firebase console →
+    enrollment isn't fully configured on the Firebase/GCP side. This is a
+    Firebase/GCP **console-side** setting, not something fixable from
+    this repo's code — it's exactly the kind of localhost friction that
+    made Google sign-in the primary method instead. In Firebase console →
     Authentication → Sign-in method → Phone, check whether "reCAPTCHA
     Enterprise" is shown as enabled — if so, either finish that setup
     (link a GCP project, enable the reCAPTCHA Enterprise API, create a
     site key for this domain) or look for an option to use classic
     reCAPTCHA v2 for phone auth instead. Also double-check the test
-    number is entered in Firebase console *exactly* as `+44 7700 900123`
-    (with the country code and matching formatting) — a mismatched test
-    number falls back to the real, non-test verification path, which
-    also triggers full reCAPTCHA. The logged error's `customData` (see
-    above) may also carry a Google-provided explanation string worth
-    reading directly.
+    number is entered in Firebase console *exactly* matching what you
+    type in the app, country code included — a mismatched test number
+    falls back to the real, non-test verification path, which also
+    triggers full reCAPTCHA. The logged error's `customData` (see above)
+    may also carry a Google-provided explanation string worth reading
+    directly.
 - **"That code didn't match"** — double check you typed the exact test
   code configured in Firebase console for that exact test number; a typo
   in either one fails the same way a real wrong code would.

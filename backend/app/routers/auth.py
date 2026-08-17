@@ -61,7 +61,9 @@ def read_current_user(
         resource_id=user.id,
         user_agent=request.headers.get("user-agent"),
     )
-    return success_response({"id": str(user.id), "phone_number": user.phone_number})
+    return success_response(
+        {"id": str(user.id), "phone_number": user.phone_number, "email": user.email}
+    )
 
 
 @router.post("/recovery/generate")

@@ -20,7 +20,7 @@ export function Home() {
           Welcome{primaryProfile ? `, ${primaryProfile.full_name}` : ""}.
         </h1>
         <p className={styles.detail}>
-          Signed in with {backendUser?.phone_number ?? "your phone number"}.
+          Signed in with {backendUser?.email ?? backendUser?.phone_number ?? "your account"}.
         </p>
         <p className={styles.note}>
           Uploading reports and viewing results are coming in the next part

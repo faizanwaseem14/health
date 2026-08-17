@@ -1,6 +1,6 @@
 """
-The `users` table: one row per login identity (a phone number that has
-verified with Firebase).
+The `users` table: one row per login identity verified by Firebase -
+either a phone number (OTP sign-in) or an email (Google sign-in).
 
 A user can manage one or more `profiles` - themselves, plus maybe a
 child or parent they take care of. Login/auth info lives here on `users`;
@@ -21,11 +21,21 @@ class User(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    # The unique ID Firebase assigns after verifying a phone number.
+    # The unique ID Firebase assigns after verifying someone's identity,
+    # regardless of which sign-in method they used - this is the one
+    # column every user is guaranteed to have.
     firebase_uid = Column(String, unique=True, nullable=False, index=True)
 
-    # E.164 format, e.g. "+15551234567".
-    phone_number = Column(String, unique=True, nullable=False, index=True)
+    # E.164 format, e.g. "+15551234567". Only set for phone sign-in - a
+    # Google-signed-in user has no phone number in the Firebase token at
+    # all, so this is nullable. A single account can end up with both
+    # populated if someone later links Google to a phone-created account
+    # (or vice versa) via Firebase's own account-linking, though that's
+    # not wired up in this app yet.
+    phone_number = Column(String, unique=True, nullable=True, index=True)
+
+    # Only set for Google (or other email-based) sign-in.
+    email = Column(String, unique=True, nullable=True, index=True)
 
     # Lets us disable an account without deleting its data.
     is_active = Column(Boolean, nullable=False, default=True)

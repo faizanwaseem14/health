@@ -92,7 +92,11 @@ def test_me_route_uses_the_standard_envelope():
 
     assert response.json() == {
         "status": "success",
-        "data": {"id": str(fake_user.id), "phone_number": "+15551234567"},
+        "data": {
+            "id": str(fake_user.id),
+            "phone_number": "+15551234567",
+            "email": None,
+        },
     }
 
 

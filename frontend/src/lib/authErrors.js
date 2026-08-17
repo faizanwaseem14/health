@@ -14,6 +14,13 @@ const FIREBASE_MESSAGES = {
   "auth/code-expired": "That code has expired. Send a new one and try again.",
   "auth/network-request-failed":
     "We couldn't reach the sign-in service. Check your connection and try again.",
+  "auth/popup-closed-by-user": "Sign-in window closed before finishing. Try again.",
+  "auth/cancelled-popup-request":
+    "Another sign-in attempt is already in progress.",
+  "auth/popup-blocked":
+    "Your browser blocked the sign-in popup. Allow popups for this site and try again.",
+  "auth/account-exists-with-different-credential":
+    "An account already exists with this email using a different sign-in method.",
 };
 
 export function describeFirebaseError(error) {

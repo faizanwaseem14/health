@@ -33,3 +33,71 @@
   padding: 0.1em 0.4em;
   border-radius: var(--radius-sm);
 }
+
+/* Google's branding guidelines call for a neutral, unbranded button -
+   not restyled with HealthVault's sage/terracotta palette. */
+.googleButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  min-height: var(--tap-target-min);
+  width: 100%;
+  padding-inline: var(--space-6);
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-border-strong);
+  background: var(--color-bg-raised);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-base);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
+}
+
+.googleButton:hover:not(:disabled) {
+  background: var(--color-bg-sunken);
+  box-shadow: var(--shadow-sm);
+}
+
+.googleButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.googleError {
+  color: var(--color-status-attention-fg);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.phoneToggle {
+  align-self: center;
+  margin-top: var(--space-5);
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  text-decoration: underline;
+  cursor: pointer;
+  min-height: var(--tap-target-min);
+  padding-inline: var(--space-2);
+}
+
+.phoneToggle:hover {
+  color: var(--color-brand);
+}
+
+.phoneSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.divider {
+  border-top: 1px solid var(--color-border);
+  margin-top: var(--space-2);
+}

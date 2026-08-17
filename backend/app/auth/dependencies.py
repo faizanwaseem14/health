@@ -38,24 +38,36 @@ def resolve_or_create_user(decoded_token: dict, db: Session) -> User:
     row - creating one the first time this person ever logs in.
 
     We match on `firebase_uid` (a stable ID Firebase assigns per person),
-    not phone number, since `firebase_uid` is what Firebase itself treats
-    as the permanent identity.
+    not phone number or email, since `firebase_uid` is what Firebase
+    itself treats as the permanent identity and it's present no matter
+    which sign-in method (phone OTP, Google, ...) was used.
     """
     firebase_uid = decoded_token["uid"]
     phone_number = decoded_token.get("phone_number")
+    email = decoded_token.get("email")
 
-    if not phone_number:
-        # Our app only supports phone sign-in, so a token with no phone
-        # number attached isn't one we know how to handle.
+    if not phone_number and not email:
+        # Every sign-in method this app supports attaches at least one
+        # of these to the token - a token with neither isn't one we know
+        # how to handle.
         raise InvalidFirebaseTokenError(
-            "Firebase token has no phone_number - only phone sign-in is supported."
+            "Firebase token has no phone_number or email - "
+            "don't know how to identify this user."
         )
 
     user = db.query(User).filter(User.firebase_uid == firebase_uid).first()
 
     if user is None:
-        user = User(firebase_uid=firebase_uid, phone_number=phone_number)
+        user = User(firebase_uid=firebase_uid, phone_number=phone_number, email=email)
         db.add(user)
+    else:
+        # Backfill whichever identifier this token has that the stored
+        # row doesn't yet - e.g. someone who first signed in with Google
+        # later links a phone number via Firebase account linking.
+        if phone_number and not user.phone_number:
+            user.phone_number = phone_number
+        if email and not user.email:
+            user.email = email
 
     user.last_login_at = datetime.now(timezone.utc)
     db.commit()
