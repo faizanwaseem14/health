@@ -28,15 +28,20 @@ app = FastAPI(title="MedVault API")
 # The frontend (Vite dev server) runs on a different origin than this
 # API, so the browser blocks its requests unless we explicitly allow
 # them here - this is what makes "run the frontend and backend
-# together locally" actually work. Both localhost and 127.0.0.1 are
-# listed since browsers treat them as different origins even though
-# they're the same machine.
+# together locally" actually work.
+#
+# Vite picks a port on its own (5173, or the next free one - 5174,
+# 5175, ... - if that's taken), so rather than list one exact port we
+# match ANY localhost/127.0.0.1 port with a regex. This is safe to
+# leave on permanently, even in production: a browser only sends an
+# Origin header of "http://localhost:<port>" when the page actually
+# was loaded from localhost on that same machine - a real attacker's
+# site can't forge that - so this regex can never be satisfied by
+# anything other than someone's own local dev server, no matter where
+# this backend itself is deployed.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1):\d+$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
