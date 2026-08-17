@@ -9,10 +9,17 @@ import { ApiError, apiFetch } from "../../lib/apiClient";
 import { describeApiError, describeFirebaseError } from "../../lib/authErrors";
 import { auth, isFirebaseConfigured } from "../../lib/firebase";
 import { toE164 } from "../../lib/phone";
+import { withTimeout } from "../../lib/withTimeout";
 import styles from "./Login.module.css";
 
 const STEP_PHONE = "phone";
 const STEP_CODE = "code";
+// Generous, but finite - signInWithPhoneNumber depends on a
+// third-party script (Google's reCAPTCHA) that can stall silently
+// (no thrown error) if it's blocked or slow, instead of failing fast.
+// Past this, we show a clear error instead of leaving the button
+// stuck on "Sending code..." forever.
+const FIREBASE_CALL_TIMEOUT_MS = 20_000;
 
 export function Login() {
   const { isAuthenticated } = useAuth();
@@ -74,7 +81,10 @@ export function Login() {
       });
 
       const verifier = getRecaptchaVerifier();
-      const result = await signInWithPhoneNumber(auth, e164Phone, verifier);
+      const result = await withTimeout(
+        signInWithPhoneNumber(auth, e164Phone, verifier),
+        FIREBASE_CALL_TIMEOUT_MS,
+      );
 
       setConfirmationResult(result);
       setSentToNumber(e164Phone);
@@ -104,7 +114,10 @@ export function Login() {
 
     setIsVerifying(true);
     try {
-      await confirmationResult.confirm(codeInput.trim());
+      await withTimeout(
+        confirmationResult.confirm(codeInput.trim()),
+        FIREBASE_CALL_TIMEOUT_MS,
+      );
       // AuthContext's onAuthStateChanged listener picks this up and
       // verifies it with our backend in the background - navigating
       // now is safe, the destination route shows a brief loading

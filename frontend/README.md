@@ -134,6 +134,20 @@ the backend a signed token to verify and set up your account.
   most common cause locally is the backend not running, or CORS blocking
   the request because the backend was started before `app/main.py`'s CORS
   settings existed — pull the latest backend code and restart it.
+- **Stuck on "Sending code…" forever, no error at all** — this was a real
+  bug: `signInWithPhoneNumber` depends on Google's reCAPTCHA script
+  loading in the browser, which can silently stall (no thrown error) if
+  it's blocked by an ad blocker, a corporate network, or a slow
+  connection. Fixed two ways in `src/lib/firebase.js` and
+  `src/pages/Login/Login.jsx`: local dev now sets Firebase's own
+  `appVerificationDisabledForTesting` flag (skips the reCAPTCHA
+  challenge entirely when testing with a Firebase console "phone number
+  for testing" - never enabled in a production build), and every
+  Firebase call now has a 20-second timeout so it fails with a clear
+  message instead of hanging forever even if something else stalls it.
+  If you still see this after pulling the latest code, check the
+  Network tab for a request to `google.com/recaptcha` or
+  `identitytoolkit.googleapis.com` that never completes.
 - **"That code didn't match"** — double check you typed the exact test
   code configured in Firebase console for that exact test number; a typo
   in either one fails the same way a real wrong code would.

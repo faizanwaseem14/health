@@ -17,6 +17,9 @@ const FIREBASE_MESSAGES = {
 };
 
 export function describeFirebaseError(error) {
+  if (error?.name === "TimeoutError") {
+    return "This is taking longer than expected. Check your internet connection and try again.";
+  }
   return (
     FIREBASE_MESSAGES[error?.code] ??
     "Something went wrong signing you in. Please try again."

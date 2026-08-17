@@ -36,3 +36,21 @@ export const isFirebaseConfigured = REQUIRED_CONFIG_KEYS.every((key) =>
 export const auth = isFirebaseConfigured
   ? getAuth(initializeApp(firebaseConfig))
   : null;
+
+// DEV-ONLY: skips the reCAPTCHA challenge entirely for phone sign-in.
+// This is Firebase's own documented flag for local testing against a
+// "phone number for testing" configured in Firebase console
+// (console -> Authentication -> Sign-in method -> Phone) - without it,
+// signInWithPhoneNumber depends on Google's reCAPTCHA script loading
+// and resolving in the browser, which can silently hang forever (no
+// thrown error, just a stuck "Sending code...") if that script is
+// blocked by an ad blocker, a corporate network, or a flaky
+// connection - exactly the symptom this fixes.
+//
+// import.meta.env.DEV is Vite's own "am I running `npm run dev`"
+// flag - it's `false` (and this whole branch is dead-code-eliminated)
+// in a production build, so this can never end up disabling real
+// phone verification for real users.
+if (isFirebaseConfigured && import.meta.env.DEV) {
+  auth.settings.appVerificationDisabledForTesting = true;
+}
