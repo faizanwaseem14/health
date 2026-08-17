@@ -9,14 +9,17 @@ that Firebase's errors get translated into our own clear exception type,
 and that a protected route correctly rejects requests with no token.
 """
 
+from dataclasses import replace
 from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 from firebase_admin.auth import InvalidIdTokenError
 
+from app.auth import firebase as firebase_module
 from app.auth.dependencies import resolve_or_create_user
 from app.auth.firebase import InvalidFirebaseTokenError, verify_id_token
+from app.config import settings
 from app.main import app as fastapi_app
 
 client = TestClient(fastapi_app)
@@ -105,3 +108,58 @@ def test_resolve_or_create_user_backfills_email_onto_an_existing_phone_user():
     assert user is existing_user
     assert user.email == "alice@example.com"
     fake_db.add.assert_not_called()
+
+
+def test_get_firebase_app_prefers_the_service_account_file_when_set():
+    # FIREBASE_SERVICE_ACCOUNT_FILE lets the Admin SDK read+parse the
+    # downloaded credential file itself - no manual JSON-on-one-line
+    # formatting to get wrong (see .env.example).
+    firebase_module._firebase_app = None
+    fake_settings = replace(
+        settings,
+        firebase_service_account_file="/fake/service-account.json",
+        firebase_service_account_json=None,
+    )
+    try:
+        with (
+            patch("app.auth.firebase.settings", fake_settings),
+            patch("app.auth.firebase.credentials.Certificate") as mock_certificate,
+            patch(
+                "app.auth.firebase.firebase_admin.initialize_app",
+                return_value=MagicMock(),
+            ),
+        ):
+            firebase_module._get_firebase_app()
+        mock_certificate.assert_called_once_with("/fake/service-account.json")
+    finally:
+        firebase_module._firebase_app = None
+
+
+def test_get_firebase_app_gives_a_clear_error_for_invalid_inline_json():
+    firebase_module._firebase_app = None
+    fake_settings = replace(
+        settings,
+        firebase_service_account_file=None,
+        firebase_service_account_json="not valid json",
+    )
+    try:
+        with patch("app.auth.firebase.settings", fake_settings):
+            with pytest.raises(RuntimeError, match="isn't valid JSON"):
+                firebase_module._get_firebase_app()
+    finally:
+        firebase_module._firebase_app = None
+
+
+def test_get_firebase_app_gives_a_clear_error_for_a_missing_file():
+    firebase_module._firebase_app = None
+    fake_settings = replace(
+        settings,
+        firebase_service_account_file="/no/such/file.json",
+        firebase_service_account_json=None,
+    )
+    try:
+        with patch("app.auth.firebase.settings", fake_settings):
+            with pytest.raises(RuntimeError, match="Couldn't read the Firebase"):
+                firebase_module._get_firebase_app()
+    finally:
+        firebase_module._firebase_app = None

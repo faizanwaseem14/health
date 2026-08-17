@@ -34,13 +34,43 @@ def _get_firebase_app() -> firebase_admin.App:
     This is deliberately lazy - it does NOT run when this file is
     imported, only the first time something actually tries to verify a
     token. That way, importing the app doesn't blow up just because
-    FIREBASE_SERVICE_ACCOUNT_JSON in your .env isn't a real credential
-    yet; you'll only see an error from the thing that actually needed it.
+    the Firebase credential in your .env isn't a real one yet; you'll
+    only see an error from the thing that actually needed it.
+
+    Two ways to supply the credential (see backend/.env.example):
+      - FIREBASE_SERVICE_ACCOUNT_FILE: a path to the .json file
+        downloaded from Firebase console. Preferred - the Admin SDK
+        reads and parses the file itself, so there's no copy/paste
+        formatting to get wrong.
+      - FIREBASE_SERVICE_ACCOUNT_JSON: that same file's entire
+        contents, pasted as one line.
     """
     global _firebase_app
     if _firebase_app is None:
-        service_account_info = json.loads(settings.firebase_service_account_json)
-        cred = credentials.Certificate(service_account_info)
+        if settings.firebase_service_account_file:
+            file_path = settings.firebase_service_account_file
+            try:
+                cred = credentials.Certificate(file_path)
+            except IOError as error:
+                raise RuntimeError(
+                    "Couldn't read the Firebase service account file at "
+                    f"FIREBASE_SERVICE_ACCOUNT_FILE={file_path!r}. Check the path "
+                    "is correct (relative paths are resolved from wherever you "
+                    "started uvicorn, usually backend/)."
+                ) from error
+        else:
+            json_value = settings.firebase_service_account_json
+            try:
+                service_account_info = json.loads(json_value)
+            except json.JSONDecodeError as error:
+                raise RuntimeError(
+                    "FIREBASE_SERVICE_ACCOUNT_JSON in your .env isn't valid JSON "
+                    "(still the placeholder, or the private_key's newlines broke "
+                    "when pasting). Easier fix: download the service account file "
+                    "from Firebase console and point FIREBASE_SERVICE_ACCOUNT_FILE "
+                    "at it instead - see backend/.env.example."
+                ) from error
+            cred = credentials.Certificate(service_account_info)
         _firebase_app = firebase_admin.initialize_app(cred)
     return _firebase_app
 

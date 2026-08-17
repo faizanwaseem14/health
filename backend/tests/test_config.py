@@ -62,3 +62,40 @@ def test_requires_anthropic_api_key():
     with patch.dict("os.environ", {"ANTHROPIC_API_KEY": ""}):
         with pytest.raises(RuntimeError, match="ANTHROPIC_API_KEY"):
             load_settings()
+
+
+def test_rejects_when_no_firebase_credential_is_configured():
+    with patch.dict(
+        "os.environ",
+        {"FIREBASE_SERVICE_ACCOUNT_JSON": "", "FIREBASE_SERVICE_ACCOUNT_FILE": ""},
+    ):
+        with pytest.raises(RuntimeError, match="Firebase service account"):
+            load_settings()
+
+
+def test_accepts_a_firebase_service_account_file_path_with_no_json_set():
+    with patch.dict(
+        "os.environ",
+        {
+            "FIREBASE_SERVICE_ACCOUNT_JSON": "",
+            "FIREBASE_SERVICE_ACCOUNT_FILE": "/some/path/service-account.json",
+        },
+    ):
+        loaded = load_settings()
+
+    assert loaded.firebase_service_account_file == "/some/path/service-account.json"
+    assert loaded.firebase_service_account_json is None
+
+
+def test_accepts_firebase_service_account_json_with_no_file_set():
+    with patch.dict(
+        "os.environ",
+        {
+            "FIREBASE_SERVICE_ACCOUNT_JSON": '{"type": "service_account"}',
+            "FIREBASE_SERVICE_ACCOUNT_FILE": "",
+        },
+    ):
+        loaded = load_settings()
+
+    assert loaded.firebase_service_account_json == '{"type": "service_account"}'
+    assert loaded.firebase_service_account_file is None

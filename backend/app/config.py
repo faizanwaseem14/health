@@ -27,8 +27,11 @@ load_dotenv()
 _ENV_SPEC = [
     # --- Database (Neon Postgres) ---
     ("DATABASE_URL", True),
-    # --- Firebase Auth (phone OTP verification) ---
-    ("FIREBASE_SERVICE_ACCOUNT_JSON", True),
+    # --- Firebase Auth (phone OTP + Google sign-in verification) ---
+    # Neither is individually required - see the FIREBASE_SERVICE_ACCOUNT_FILE
+    # note below for the "at least one" check.
+    ("FIREBASE_SERVICE_ACCOUNT_JSON", False),
+    ("FIREBASE_SERVICE_ACCOUNT_FILE", False),
     # --- Cloudflare R2 (private file storage) ---
     ("R2_ACCOUNT_ID", True),
     ("R2_ACCESS_KEY_ID", True),
@@ -62,7 +65,8 @@ class Settings:
     """A typed, read-only bundle of every config value the app uses."""
 
     database_url: str
-    firebase_service_account_json: str
+    firebase_service_account_json: str | None
+    firebase_service_account_file: str | None
     r2_account_id: str
     r2_access_key_id: str
     r2_secret_access_key: str
@@ -103,6 +107,24 @@ def load_settings() -> Settings:
             "Fix: copy backend/.env.example to backend/.env (if you haven't "
             "already) and fill in real values. See SETUP.md for where to get "
             "each one.\n"
+        )
+
+    if (
+        not values["FIREBASE_SERVICE_ACCOUNT_JSON"]
+        and not values["FIREBASE_SERVICE_ACCOUNT_FILE"]
+    ):
+        raise RuntimeError(
+            "\n\n"
+            "MedVault cannot start: no Firebase service account credential is "
+            "configured.\n\n"
+            "Fix: set ONE of these two in backend/.env -\n"
+            "  - FIREBASE_SERVICE_ACCOUNT_FILE - a path to the .json file you\n"
+            "    downloaded from Firebase console (recommended - no copy/paste\n"
+            "    formatting to get wrong), e.g.\n"
+            "    FIREBASE_SERVICE_ACCOUNT_FILE=./firebase-service-account.json\n"
+            "  - FIREBASE_SERVICE_ACCOUNT_JSON - that same file's entire contents\n"
+            "    pasted as one line.\n"
+            "See SETUP.md for the full steps.\n"
         )
 
     ocr_provider = os.environ.get("OCR_PROVIDER", "").strip() or _DEFAULT_OCR_PROVIDER
@@ -146,6 +168,7 @@ def load_settings() -> Settings:
     return Settings(
         database_url=values["DATABASE_URL"],
         firebase_service_account_json=values["FIREBASE_SERVICE_ACCOUNT_JSON"],
+        firebase_service_account_file=values["FIREBASE_SERVICE_ACCOUNT_FILE"],
         r2_account_id=values["R2_ACCOUNT_ID"],
         r2_access_key_id=values["R2_ACCESS_KEY_ID"],
         r2_secret_access_key=values["R2_SECRET_ACCESS_KEY"],

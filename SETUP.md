@@ -16,14 +16,20 @@ copy the value it gives you, and paste it into `backend/.env` (copy
   4. Paste it into `DATABASE_URL` in `backend/.env`. Make sure the string
      ends with `?sslmode=require` — Neon requires an encrypted connection.
 
-- [ ] **Firebase — phone number login (OTP)**
+- [ ] **Firebase — Google sign-in + phone number login (OTP)**
   1. Create a project at https://console.firebase.google.com
-  2. Go to Authentication -> Sign-in method -> enable "Phone".
+  2. Go to Authentication -> Sign-in method -> enable "Google" (primary
+     sign-in method) and, optionally, "Phone" (secondary/fallback).
   3. Go to Project settings (gear icon) -> Service accounts -> click
      "Generate new private key". This downloads a `.json` file.
-  4. Open that file in a text editor, copy the ENTIRE contents onto one
-     line, and paste it into `FIREBASE_SERVICE_ACCOUNT_JSON` in
-     `backend/.env`.
+  4. Easiest: put that file somewhere on your machine (outside this repo)
+     and paste its full path into `FIREBASE_SERVICE_ACCOUNT_FILE` in
+     `backend/.env` - e.g. on Windows,
+     `FIREBASE_SERVICE_ACCOUNT_FILE=C:\Users\you\firebase-service-account.json`.
+     This avoids the copy/paste formatting mistakes that come with option 5.
+  5. Alternative: open the file in a text editor, copy the ENTIRE contents
+     onto one line, and paste it into `FIREBASE_SERVICE_ACCOUNT_JSON`
+     instead. Only needed if you'd rather not reference an external file.
 
 - [ ] **Cloudflare R2 — private file storage**
 
