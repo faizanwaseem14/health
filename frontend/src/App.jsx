@@ -7,6 +7,7 @@ import { Home } from "./pages/Home/Home";
 import { Upload } from "./pages/Upload/Upload";
 import { Processing } from "./pages/Processing/Processing";
 import { ReportResults } from "./pages/ReportResults/ReportResults";
+import { OcrInspection } from "./pages/OcrInspection/OcrInspection";
 import { RequireAuth } from "./routes/RequireAuth";
 import { RequireProfile } from "./routes/RequireProfile";
 
@@ -28,6 +29,7 @@ function App() {
             <Route path="upload" element={<Upload />} />
             <Route path="reports/:reportId" element={<Processing />} />
             <Route path="reports/:reportId/results" element={<ReportResults />} />
+            <Route path="reports/:reportId/ocr" element={<OcrInspection />} />
           </Route>
         </Route>
       </Route>

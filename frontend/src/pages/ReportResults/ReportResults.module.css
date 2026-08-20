@@ -6,7 +6,7 @@
 
 .card {
   width: 100%;
-  max-width: 32rem;
+  max-width: 36rem;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -15,9 +15,38 @@
 
 .heading {
   font-size: var(--text-2xl);
+  word-break: break-word;
 }
 
 .intro {
   color: var(--color-text-muted);
   line-height: var(--leading-normal);
+}
+
+.explanationError {
+  align-self: stretch;
+  color: var(--color-status-attention-fg);
+  font-weight: var(--weight-medium);
+}
+
+.list {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.homeLink {
+  align-self: center;
+  margin-top: var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  text-decoration: underline;
+}
+
+.homeLink:hover {
+  color: var(--color-brand);
 }

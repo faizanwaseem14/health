@@ -56,4 +56,25 @@ export async function apiFetch(path, { method = "GET", body, headers, ...rest } 
   return data;
 }
 
+/**
+ * Like apiFetch, but for a binary response (e.g. a report page
+ * rendered as a PNG) instead of JSON - apiFetch only ever parses JSON
+ * or returns undefined, so a real image response needs its own path.
+ * Returns a Blob; the caller decides what to do with it (typically
+ * URL.createObjectURL for an <img src>).
+ */
+export async function apiFetchBlob(path, token) {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response.ok) {
+    throw new ApiError(`Request to ${path} failed (${response.status})`, {
+      status: response.status,
+    });
+  }
+
+  return response.blob();
+}
+
 export { ApiError };

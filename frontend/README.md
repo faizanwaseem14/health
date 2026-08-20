@@ -273,11 +273,12 @@ and the frontend:
    back up, exactly where it left off.
 
 7. **What you should see when it finishes**: a status badge changes to
-   one of **Done** (select **View results** — a placeholder for now; the
-   real results screen is a later part of HealthVault), **Needs a quick
-   review** (a normal outcome for a hard-to-read scan, not an error), or
-   **Couldn't process** (select **Try again** to retry — your original
-   file is untouched and doesn't need re-uploading).
+   one of **Done** (select **View results** to see the extracted values
+   - see "Viewing results, explanations, and corrections" below),
+   **Needs a quick review** (a normal outcome for a hard-to-read scan,
+   not an error), or **Couldn't process** (select **Try again** to
+   retry — your original file is untouched and doesn't need
+   re-uploading).
 
 ### If upload/processing doesn't work
 
@@ -290,6 +291,64 @@ and the frontend:
 - **"That file is too large" / "doesn't look like a photo or PDF..."** —
   these are real limits (25MB max; JPEG, PNG, HEIC, or PDF only) enforced
   both instantly in the browser and again by the backend — not a bug.
+
+## Viewing results, explanations, and corrections
+
+Once a report reaches **Done**, selecting **View results** shows every
+test value HealthVault extracted, with its status (Normal / High / Low,
+always shown as an icon + word, never color alone), how confident the
+extraction was, and whether it needs a second look.
+
+1. **Tap any result** to expand it. This does two things: shows the
+   reference range and confidence/trust detail right away, and fetches a
+   plain-language explanation of what that test measures - the FIRST tap
+   on ANY result in the report makes one request that generates
+   explanations for the whole report at once (the backend caches one AI
+   call per distinct test name, not per result - see
+   `backend/app/ai/explanation_service.py`); every result you expand
+   after that is instant, no more calls. You'll briefly see "Getting an
+   explanation…" only on that first tap.
+
+2. **If a result says "Needs a quick review"**, select "Why does this
+   need review?" to see a plain-language reason, plus the backend's own
+   technical note underneath - this is a normal outcome for a reading
+   the AI extraction wasn't fully confident about, not an error state.
+
+3. **Select "Fix this value"** to correct a misread value: you'll see
+   exactly what was extracted, a field to type the correct value, and an
+   optional reason. Saving updates the result immediately (its status
+   badge recalculates against the same reference range) - nothing is
+   silently overwritten. Scroll down within the same expanded result to
+   see **Correction history**: every past correction, both the old and
+   new value, with a timestamp.
+
+4. **Select "View in original report"** (shown when that result has
+   traceable OCR evidence) to open a page showing the report's own page
+   image with a box drawn around every word HealthVault's OCR engine
+   detected - the box(es) this particular value came from are
+   highlighted distinctly from the rest. A "Read the detected text
+   instead" disclosure gives a plain-text transcript of the same page,
+   for comparing without squinting at overlaid boxes on a small screen.
+   `multi_page.pdf` has two pages; use the Previous/Next page buttons to
+   move between them.
+
+### If results/explanations/corrections don't work
+
+- **A result never gets an explanation, just "We couldn't generate an
+  explanation for this test right now."** — the backend's explanation
+  generation has its own guardrails and can legitimately skip a test
+  name (see `backend/app/ai/explanation_prompt.py`); this isn't a bug,
+  though a real Claude API error would look the same from here - check
+  the backend/worker terminal if it happens for every result.
+- **"Fix this value" doesn't seem to change the status badge** — the
+  status (High/Low/Normal) is only recalculated when you correct the
+  **value** field specifically, against that same result's printed
+  reference range - if the range itself was misread, the value's status
+  may still look surprising even after fixing the value.
+- **"View in original report" doesn't appear on a result** — that
+  specific result has no linked OCR evidence (the AI extraction didn't
+  report which words it came from for that one value) - the result
+  itself is still fully usable, there's just nothing to trace back to.
 
 ## Running it on Mac/Linux
 
@@ -344,8 +403,10 @@ src/
 │   ├── authErrors.js      Firebase/backend errors -> plain-language messages.
 │   ├── imageQualityChecks.js  Client-side blur/dark/glare/resolution/cut-off/
 │   │                          rotation heuristics, run before an upload.
-│   └── reportStatus.js    report+job status -> a <StatusBadge> tone + label,
-│                          shared by Home's list and the processing screen.
+│   ├── reportStatus.js    report+job status -> a <StatusBadge> tone + label,
+│   │                      shared by Home's list and the processing screen.
+│   └── resultStatus.js    a result's flag/trust_status -> a <StatusBadge>
+│                          tone + label, shared by the results screen.
 ├── components/            Shared, reusable pieces every screen can use:
 │   ├── Button/               primary / accent / secondary / ghost variants
 │   ├── Card/                 the one surface/panel component
@@ -370,8 +431,12 @@ src/
     ├── Processing/           Polls a report's job status live; the playful
     │                        loading state, review/done/failed outcomes,
     │                        and retry.
-    └── ReportResults/        Placeholder "your report is ready" screen -
-                              the real results UI is a later part.
+    ├── ReportResults/        Extracted results, tap-to-expand for an
+    │                        on-demand explanation, correction (with
+    │                        full history), and a link to OCR inspection.
+    └── OcrInspection/        The report's own page image with a box
+                              drawn around every OCR-detected word -
+                              proves exactly where a value came from.
 ```
 
 ## Design system, in brief

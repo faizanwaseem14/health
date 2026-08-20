@@ -41,6 +41,8 @@ ALLOWED_ACTIONS = {
     "otp_request",
     "recovery_attempt",
     "generate_recovery_code",
+    "generate_explanations",
+    "correct_result",
 }
 
 # Every kind of ROW an action can be about - just a table name, never a
