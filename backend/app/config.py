@@ -57,7 +57,16 @@ _DEFAULT_OCR_PROVIDER = "tesseract"
 # safe default, tune later" setting as OCR_PROVIDER — not a secret, so
 # it doesn't belong in _ENV_SPEC either. Below this, a result's AI
 # confidence isn't enough to trust it on its own.
-_DEFAULT_TRUST_CONFIDENCE_THRESHOLD = 0.8
+#
+# Was 0.8; lowered based on real testing - a clean, correctly-read
+# report was still landing on review_required because Claude's own
+# reported confidence for otherwise-correct rows didn't clear 0.8. This
+# is ONLY the confidence cutoff (trust/checks.py's check 18) - every
+# other trust check (evidence-grounding, unit sanity, range sanity, the
+# rest of trust/checks.py) is unaffected and still runs exactly as
+# before. Override with the TRUST_CONFIDENCE_THRESHOLD env var (0.0-1.0)
+# to tune further.
+_DEFAULT_TRUST_CONFIDENCE_THRESHOLD = 0.7
 
 
 @dataclass(frozen=True)

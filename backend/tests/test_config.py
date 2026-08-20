@@ -99,3 +99,17 @@ def test_accepts_firebase_service_account_json_with_no_file_set():
 
     assert loaded.firebase_service_account_json == '{"type": "service_account"}'
     assert loaded.firebase_service_account_file is None
+
+
+def test_trust_confidence_threshold_defaults_to_0_7_when_blank():
+    with patch.dict("os.environ", {"TRUST_CONFIDENCE_THRESHOLD": ""}):
+        loaded = load_settings()
+
+    assert loaded.trust_confidence_threshold == 0.7
+
+
+def test_trust_confidence_threshold_is_still_overridable():
+    with patch.dict("os.environ", {"TRUST_CONFIDENCE_THRESHOLD": "0.65"}):
+        loaded = load_settings()
+
+    assert loaded.trust_confidence_threshold == 0.65

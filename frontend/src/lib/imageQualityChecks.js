@@ -20,11 +20,24 @@
 // original photo.
 const ANALYSIS_MAX_DIMENSION = 320;
 
-const MIN_SHORT_EDGE_PX = 700;
-const DARK_MEAN_LUMINANCE = 60;
-const BRIGHT_MEAN_LUMINANCE = 245;
-const GLARE_NEAR_WHITE_FRACTION = 0.35;
-const BLUR_VARIANCE_THRESHOLD = 130;
+// Tuned against real testing feedback (a clean, small-but-readable
+// report was flagged "blurry" and "glare" - both false alarms) plus
+// measurements against the fixture reports in
+// backend/tests/fixtures/lab_reports/. Every one of these is a
+// genuinely-clean, mostly-white document, so they're the baseline for
+// "should never warn":
+//   clear.png/rotated.png/unusual_layout.png: short edge 380-488px,
+//   mean luminance ~246-248, ~87-90% of pixels near-white (255,255,255
+//   background is simply what a scanned/photographed page looks like -
+//   NOT glare), Laplacian variance in the thousands (crisp text edges).
+// Every threshold below is set with real margin below/above those
+// numbers, so a normal clean document never trips any of them; each
+// only fires on something genuinely, unambiguously bad.
+const MIN_SHORT_EDGE_PX = 300;
+const DARK_MEAN_LUMINANCE = 40;
+const BRIGHT_MEAN_LUMINANCE = 250;
+const GLARE_NEAR_WHITE_FRACTION = 0.92;
+const BLUR_VARIANCE_THRESHOLD = 40;
 const CUTOFF_BORDER_STDDEV_THRESHOLD = 55;
 
 export const QUALITY_WARNINGS = {
@@ -70,6 +83,11 @@ function loadGrayscaleSample(file) {
 }
 
 function checkBrightness(gray) {
+  // Near-white background is normal for ANY photographed or scanned
+  // document (a clean page is ~85-90% near-white pixels, just from the
+  // paper) - that's not glare, that's paper. Genuine glare/overexposure
+  // means the bright wash has eaten the text too, so this only fires
+  // when near-white covers almost the ENTIRE frame.
   let sum = 0;
   let nearWhite = 0;
   for (let i = 0; i < gray.length; i++) {
