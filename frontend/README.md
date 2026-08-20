@@ -236,6 +236,23 @@ and the frontend:
    photo** (opens your camera on a phone/laptop with one) or **Choose a
    file** (any JPEG, PNG, HEIC, or PDF up to 25MB).
 
+   Don't have a real lab report handy? Use one of the de-identified
+   sample reports already checked into the repo, at
+   `backend/tests/fixtures/lab_reports/` — entirely fabricated data (a
+   fake lab, fake patient label, fake values), each stamped with a
+   visible "SYNTHETIC SAMPLE - NOT A REAL PATIENT" banner:
+   - `clear.png` — a clean, straightforward table layout (the easiest
+     one — good for a first end-to-end test)
+   - `blurry.png` — the same report, blurred (tests a poor-quality scan)
+   - `rotated.png` — the same report, rotated ~7° (tests a skewed photo)
+   - `unusual_layout.png` — a non-tabular, inline-label layout
+   - `multi_page.pdf` — a 2-page report (hematology, then chemistry)
+
+   On your phone, AirDrop/email/transfer one of these image files to
+   the device first, then select it via **Choose a file** (the camera
+   option obviously won't work for a file that's already an image). On
+   a laptop, just choose the file directly from the repo.
+
 4. **Check the preview.** For a photo, HealthVault runs a few quick,
    local checks — blur, brightness/glare, resolution, cut-off edges, and
    (for JPEGs) sideways orientation — and shows any as gentle warnings
