@@ -1,16 +1,23 @@
 .wrap {
   display: flex;
-  justify-content: center;
-  padding-block: var(--space-8);
+  flex-direction: column;
+  gap: var(--space-6);
+  padding-block: var(--space-7) var(--space-8);
 }
 
-.card {
-  width: 100%;
-  max-width: 36rem;
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.headerText {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-5);
+  gap: var(--space-2);
+  min-width: 0;
 }
 
 .heading {
@@ -24,13 +31,31 @@
 }
 
 .explanationError {
-  align-self: stretch;
   color: var(--color-status-attention-fg);
   font-weight: var(--weight-medium);
 }
 
+/* Mobile-first: one column, report on top, results below. */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.resultsColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.resultsHeading {
+  font-size: var(--text-lg);
+  color: var(--color-text);
+}
+
 .list {
-  align-self: stretch;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -39,9 +64,20 @@
   margin: 0;
 }
 
+.bottomActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.comingSoon {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-style: italic;
+}
+
 .homeLink {
   align-self: center;
-  margin-top: var(--space-3);
   color: var(--color-text-muted);
   font-size: var(--text-sm);
   text-decoration: underline;
@@ -49,4 +85,34 @@
 
 .homeLink:hover {
   color: var(--color-brand);
+}
+
+.safetyFooter {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  background: var(--color-surface-brand);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+}
+
+.safetyFooter svg {
+  flex-shrink: 0;
+  color: var(--color-brand);
+  margin-top: 0.1em;
+}
+
+/* Wide screens: report image and results side by side. */
+@media (min-width: 60rem) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .layoutReportHidden {
+    grid-template-columns: 1fr;
+  }
 }

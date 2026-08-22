@@ -1,0 +1,138 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  align-self: start;
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+}
+
+.panelHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.panelHeading {
+  font-size: var(--text-lg);
+  color: var(--color-text);
+}
+
+.inspectionLink {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  text-decoration: underline;
+  white-space: nowrap;
+}
+
+.inspectionLink:hover {
+  color: var(--color-brand);
+}
+
+.error {
+  color: var(--color-status-attention-fg);
+  font-weight: var(--weight-medium);
+}
+
+.pageNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.pageButton {
+  min-height: var(--tap-target-min);
+  padding-inline: var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-border-strong);
+  background: transparent;
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-weight: var(--weight-medium);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.pageButton:hover:not(:disabled) {
+  background: var(--color-bg-sunken);
+  border-color: var(--color-brand);
+}
+
+.pageButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.pageLabel {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.imageFrame {
+  min-height: 16rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-sunken);
+  border: 1px solid var(--color-border);
+  overflow: auto;
+}
+
+.imageLoading {
+  color: var(--color-text-muted);
+  padding: var(--space-6);
+}
+
+.imageWrap {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+}
+
+.pageImage {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* A tappable value on the report image: a subtle highlight so the
+   report reads cleanly at rest, but every extracted value is
+   discoverable as interactive on hover/focus/tap. */
+.region {
+  position: absolute;
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-brand) 10%, transparent);
+  padding: 0;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease);
+}
+
+.region:hover,
+.region:focus-visible {
+  background: color-mix(in srgb, var(--color-brand) 22%, transparent);
+  border-color: var(--color-brand);
+  outline: none;
+}
+
+.regionSelected {
+  background: color-mix(in srgb, var(--color-accent) 28%, transparent);
+  border-color: var(--color-accent);
+  border-width: 2px;
+}
+
+@media (min-width: 60rem) {
+  .imageFrame {
+    max-height: 44rem;
+  }
+}

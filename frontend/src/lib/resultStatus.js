@@ -14,9 +14,12 @@ export function describeResultFlag(flag) {
     case "high":
       return { tone: "attention", label: "↑ High" };
     case "low":
-      return { tone: "attention", label: "↓ Low" };
+      // A distinct tone from "high" on purpose - amber for both would
+      // mean color (and only color) was the one thing telling a
+      // colorblind reader "above range" from "below range" apart.
+      return { tone: "low", label: "↓ Low" };
     case "normal":
-      return { tone: "good", label: "Normal" };
+      return { tone: "good", label: "✓ Normal" };
     default:
       return null;
   }
@@ -42,8 +45,7 @@ export function describeTrustStatus(trustStatus) {
  * 0.70 threshold") is accurate but written for debugging, not for a
  * reader. Falls back to a generic reassurance for note shapes this
  * doesn't recognize, rather than ever showing raw internals as the
- * primary message (the raw note is still available in a details
- * disclosure - see ResultRow.jsx).
+ * primary message.
  */
 export function describeReviewReason(trustCheckNotes) {
   const notes = (trustCheckNotes ?? "").toLowerCase();

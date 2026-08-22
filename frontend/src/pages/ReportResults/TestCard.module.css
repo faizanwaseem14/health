@@ -1,0 +1,72 @@
+.card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-raised);
+  overflow: hidden;
+  transition: border-color var(--motion-fast) var(--motion-ease);
+}
+
+.cardSelected {
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-sm);
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  width: 100%;
+  min-height: var(--tap-target-min);
+  padding: var(--space-5);
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--font-body);
+}
+
+.summary:hover,
+.summary:focus-visible {
+  background: var(--color-bg-sunken);
+  outline: none;
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.testName {
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-lg);
+  color: var(--color-text);
+}
+
+.range {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.reviewBadge {
+  margin-top: var(--space-1);
+}
+
+.valueGroup {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.value {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-2xl);
+  color: var(--color-text);
+  white-space: nowrap;
+}

@@ -68,6 +68,11 @@
      (green), attention (amber), and review (blue-gray). */
   --status-pending-600: #6b6355;
   --status-pending-100: #e9e2d3;
+  /* A below-range reading needs a color as distinct from "high"
+     (amber) as it is from "normal" (green) - a muted plum/indigo, the
+     one hue family not already used by another status. */
+  --status-low-600: #5b4d8f;
+  --status-low-100: #e6e1f2;
 
   /* ---------------------------------------------------------------
      COLOR — semantic tokens (what components should actually use)
@@ -117,6 +122,8 @@
   --color-status-review-bg: var(--status-review-100);
   --color-status-pending-fg: var(--status-pending-600);
   --color-status-pending-bg: var(--status-pending-100);
+  --color-status-low-fg: var(--status-low-600);
+  --color-status-low-bg: var(--status-low-100);
 
   --shadow-color: 42, 36, 28;
   --shadow-sm: 0 1px 3px rgba(var(--shadow-color), 0.1);
@@ -227,6 +234,8 @@
   --color-status-review-bg: #2c3a45;
   --color-status-pending-fg: #bdb2a0;
   --color-status-pending-bg: #3a3327;
+  --color-status-low-fg: #b8abe0;
+  --color-status-low-bg: #332c47;
 
   --shadow-color: 10, 8, 6;
   --shadow-sm: 0 1px 3px rgba(var(--shadow-color), 0.4);

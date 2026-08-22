@@ -33,3 +33,8 @@
   background: var(--color-status-pending-bg);
   color: var(--color-status-pending-fg);
 }
+
+.low {
+  background: var(--color-status-low-bg);
+  color: var(--color-status-low-fg);
+}

@@ -294,43 +294,54 @@ and the frontend:
 
 ## Viewing results, explanations, and corrections
 
-Once a report reaches **Done**, selecting **View results** shows every
-test value HealthVault extracted, with its status (Normal / High / Low,
-always shown as an icon + word, never color alone), how confident the
-extraction was, and whether it needs a second look.
+Once a report reaches **Done**, selecting **View results** opens a
+two-column screen: your original report's page image on the left (the
+"trust anchor" - shown by default, the actual scanned/rendered page,
+not a re-typed summary) and a clean list of extracted test cards on the
+right, each showing the test name, the reference range exactly as
+printed, the value, and a status badge (Normal = green, High = amber,
+Low = a distinct purple - always icon + word + color together, never
+color alone). On a narrow screen the two stack, report on top.
 
-1. **Tap any result** to expand it. This does two things: shows the
-   reference range and confidence/trust detail right away, and fetches a
-   plain-language explanation of what that test measures - the FIRST tap
-   on ANY result in the report makes one request that generates
-   explanations for the whole report at once (the backend caches one AI
-   call per distinct test name, not per result - see
-   `backend/app/ai/explanation_service.py`); every result you expand
-   after that is instant, no more calls. You'll briefly see "Getting an
-   explanation…" only on that first tap.
+1. **Tap a value** - either its card on the right, or the highlighted
+   region directly on the report image on the left - to open its "What
+   is this?" panel. Both are linked: tapping one selects the other too.
+   This shows only a one-line, plain-language explanation of what the
+   test measures (fetched on demand - the FIRST tap on ANY result in
+   the report makes one request that generates explanations for the
+   whole report at once, since the backend caches one AI call per
+   distinct test name, not per result - see
+   `backend/app/ai/explanation_service.py`; every result after that is
+   instant). By design this panel never says anything about whether a
+   value is good or bad, or what to do about it - only what the test
+   measures.
 
-2. **If a result says "Needs a quick review"**, select "Why does this
-   need review?" to see a plain-language reason, plus the backend's own
-   technical note underneath - this is a normal outcome for a reading
-   the AI extraction wasn't fully confident about, not an error state.
+2. **A result with a small "Needs a quick review" tag** on its card
+   means the extraction itself wasn't fully confident about that
+   reading - a normal outcome, not an error state. It's still worth a
+   glance at the original report image next to it.
 
-3. **Select "Fix this value"** to correct a misread value: you'll see
-   exactly what was extracted, a field to type the correct value, and an
-   optional reason. Saving updates the result immediately (its status
-   badge recalculates against the same reference range) - nothing is
-   silently overwritten. Scroll down within the same expanded result to
-   see **Correction history**: every past correction, both the old and
-   new value, with a timestamp.
+3. **Select "Fix this value"** in the panel to correct a misread value:
+   you'll see exactly what was extracted, a field to type the correct
+   value, and an optional reason. Saving updates the result immediately
+   (its status badge recalculates against the same printed reference
+   range) - nothing is silently overwritten. Below that, **Correction
+   history** lists every past correction, old and new value, with a
+   timestamp.
 
-4. **Select "View in original report"** (shown when that result has
-   traceable OCR evidence) to open a page showing the report's own page
-   image with a box drawn around every word HealthVault's OCR engine
-   detected - the box(es) this particular value came from are
-   highlighted distinctly from the rest. A "Read the detected text
-   instead" disclosure gives a plain-text transcript of the same page,
-   for comparing without squinting at overlaid boxes on a small screen.
-   `multi_page.pdf` has two pages; use the Previous/Next page buttons to
-   move between them.
+4. **"Hide report"**, top-right of the screen, collapses the report
+   image away and lets the results list use the full width - useful on
+   a smaller laptop screen. **"See trend over time"** (in the panel),
+   **"View trends for this report"**, and **"Share with doctor"**
+   (bottom of the screen) are all coming-soon placeholders for now -
+   they show a short note when tapped rather than doing anything yet.
+
+5. **Select "Full OCR inspection ↗"**, top-right of the report panel,
+   to open a page showing the report's own page image with a box drawn
+   around every word HealthVault's OCR engine detected - useful for
+   digging into exactly what the extraction saw. `multi_page.pdf` has
+   two pages; use the Previous/Next page buttons to move between them
+   on either that screen or the results screen's own report panel.
 
 ### If results/explanations/corrections don't work
 
@@ -345,10 +356,11 @@ extraction was, and whether it needs a second look.
   **value** field specifically, against that same result's printed
   reference range - if the range itself was misread, the value's status
   may still look surprising even after fixing the value.
-- **"View in original report" doesn't appear on a result** — that
-  specific result has no linked OCR evidence (the AI extraction didn't
-  report which words it came from for that one value) - the result
-  itself is still fully usable, there's just nothing to trace back to.
+- **A value on the report image isn't tappable** — that specific result
+  has no linked OCR evidence (the AI extraction didn't report which
+  words it came from for that one value); its card in the results list
+  is still fully usable, there's just nothing to highlight on the image
+  for it.
 
 ## Running it on Mac/Linux
 
@@ -431,9 +443,12 @@ src/
     ├── Processing/           Polls a report's job status live; the playful
     │                        loading state, review/done/failed outcomes,
     │                        and retry.
-    ├── ReportResults/        Extracted results, tap-to-expand for an
-    │                        on-demand explanation, correction (with
-    │                        full history), and a link to OCR inspection.
+    ├── ReportResults/        The report's page image (tappable, linked
+    │                        to the results list) beside a clean list of
+    │                        test cards - tap either for an on-demand
+    │                        "what is this?" explanation, correction
+    │                        (with full history), and a link to OCR
+    │                        inspection.
     └── OcrInspection/        The report's own page image with a box
                               drawn around every OCR-detected word -
                               proves exactly where a value came from.
