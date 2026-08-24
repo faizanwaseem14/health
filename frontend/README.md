@@ -254,6 +254,11 @@ and the frontend:
    - `rotated.png` — the same report, rotated ~7° (tests a skewed photo)
    - `unusual_layout.png` — a non-tabular, inline-label layout
    - `multi_page.pdf` — a 2-page report (hematology, then chemistry)
+   - `trend_report_1.png`, `trend_report_2.png`, `trend_report_3.png` — the
+     SAME four tests (Hemoglobin, White Blood Cell Count, Platelet Count,
+     Glucose) at three different values and dates — **upload all three,
+     in that number order,** to see a real trend line (see "Viewing
+     report history and trends" below)
 
    On your phone, AirDrop/email/transfer one of these image files to
    the device first, then select it via **Choose a file** (the camera
@@ -338,10 +343,11 @@ color alone). On a narrow screen the two stack, report on top.
 
 4. **"Hide report"**, top-right of the screen, collapses the report
    image away and lets the results list use the full width - useful on
-   a smaller laptop screen. **"See trend over time"** (in the panel),
-   **"View trends for this report"**, and **"Share with doctor"**
-   (bottom of the screen) are all coming-soon placeholders for now -
-   they show a short note when tapped rather than doing anything yet.
+   a smaller laptop screen. **"See trend over time"** (in the panel) and
+   **"View trends for this report"** (bottom of the screen) open the
+   trends screen - see "Viewing report history and trends" below.
+   **"Share with doctor"** is still a coming-soon placeholder - it shows
+   a short note when tapped rather than doing anything yet.
 
 5. **Select "Full OCR inspection ↗"**, top-right of the report panel,
    to open a page showing the report's own page image with a box drawn
@@ -368,6 +374,72 @@ color alone). On a narrow screen the two stack, report on top.
   words it came from for that one value); its card in the results list
   is still fully usable, there's just nothing to highlight on the image
   for it.
+
+## Viewing report history and trends
+
+1. **From Home, select "See full history"** (next to "Your reports") to
+   open **Report history** - every report you've uploaded, most recent
+   first, with its name, upload date, and status. Select a row to jump
+   back into that report; **Rename** opens an inline field to give it a
+   label of your own (e.g. "Blood work - March") without touching the
+   original file; **Delete** asks you to confirm, then permanently
+   removes the report and everything extracted from it (not just from
+   the list - the underlying file too).
+
+2. **To see a real trend, upload `trend_report_1.png`,
+   `trend_report_2.png`, and `trend_report_3.png` (from
+   `backend/tests/fixtures/lab_reports/`) IN THAT NUMBER ORDER** - a
+   report's position on a trend is its upload time, not the date
+   printed on it, so uploading them out of order will still work but
+   the line won't match the story below. All three print the same four
+   tests (Hemoglobin, White Blood Cell Count, Platelet Count, Glucose)
+   at different values - White Blood Cell Count is the one to watch,
+   rising from a comfortably normal 6.2 to a clearly **High** 11.8
+   across the three reports.
+
+3. **Once all three have finished processing**, open the most recent
+   one's results and select **"View trends for this report"** (or **"See
+   trend over time"** on any individual test's panel, which jumps
+   straight to that test). This opens the trends screen:
+   - **"Every test in this report"** is a compact grid of that report's
+     own results - value and status badge at a glance, with any
+     High/Low result visibly highlighted. A test that isn't matched to
+     HealthVault's test catalog yet (rare, but possible for an unusual
+     raw name) shows "Not tracked over time yet" instead of a status -
+     it's still on the results screen, just not here.
+   - **"Test history"** below is chips for every test that DOES have a
+     trend - select **White Blood Cell Count** to see its line rise
+     across all three reports, ending in an amber triangle marker (a
+     different shape AND color from the green circles the in-range
+     points use - status is never color alone here either). Below the
+     chart, every point is repeated as plain text with a real status
+     badge - the fully accessible version of the same data.
+   - A test with only one usable data point so far (nothing to compare
+     it to yet) shows a friendly "Upload another report to see a trend
+     over time for this test" message instead of a one-point chart.
+   - The one sentence above the chart (e.g. "Your most recent White
+     Blood Cell Count is above the range on your report") is the ONLY
+     thing HealthVault ever says about a trend - purely factual, never
+     advice or interpretation, same hard rule as the results screen's
+     explanations.
+
+### If history/trends doesn't work
+
+- **A report doesn't show up in a trend at all** — trends only ever
+  group a test across reports if it's resolved to HealthVault's test
+  catalog (deterministic, not AI-guessed) AND uploaded under the same
+  profile; an unrecognized test name is shown honestly as "Not tracked
+  over time yet" rather than silently guessed into the wrong group.
+- **A trend has fewer points than reports you uploaded** — a result
+  that couldn't be safely compared (a different, non-convertible unit,
+  or a non-numeric value like "Negative") is excluded from the chart
+  rather than plotted misleadingly; the note below the chart says how
+  many and why.
+- **Delete seems to have "failed" silently** — if you see the report
+  disappear from the list but the app doesn't show an error, that's
+  actually working as designed: deleting the underlying stored file is
+  attempted best-effort and never blocks the delete itself from
+  succeeding (your data is already gone from your account either way).
 
 ## Running it on Mac/Linux
 
@@ -456,9 +528,17 @@ src/
     │                        "what is this?" explanation, correction
     │                        (with full history), and a link to OCR
     │                        inspection.
-    └── OcrInspection/        The report's own page image with a box
-                              drawn around every OCR-detected word -
-                              proves exactly where a value came from.
+    ├── OcrInspection/        The report's own page image with a box
+    │                        drawn around every OCR-detected word -
+    │                        proves exactly where a value came from.
+    ├── History/               Every report you've uploaded, most recent
+    │                        first - open, rename, or delete one.
+    └── Trends/                A report's own tests at a glance, plus a
+                              per-test line chart of every genuinely
+                              comparable value across your reports over
+                              time (see app/trends/service.py for what
+                              "comparable" means) - colorblind-safe
+                              High/Low markers, never color alone.
 ```
 
 ## Design system, in brief

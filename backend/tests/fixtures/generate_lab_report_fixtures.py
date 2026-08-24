@@ -20,6 +20,13 @@ Produces, into tests/fixtures/lab_reports/:
                              both High and Low flagged values (everything above
                              is deliberately in-range, so this is the one to use
                              for exercising the full range of status badges)
+  trend_report_1.png         - three reports of the SAME four tests (Group D:
+  trend_report_2.png           History & Trends) at three different values, so
+  trend_report_3.png           uploading all three (IN THIS NUMBER ORDER - a
+                             report's upload time is what drives its position
+                             on a trend, not the date printed on it) shows a
+                             real changing trend line, including White Blood
+                             Cell Count rising from normal into the high range
 
 Regenerate with:
 
@@ -92,6 +99,49 @@ _FULL_PANEL_SECTIONS = [
             ("HDL Cholesterol", "38", "mg/dL", "40-60"),  # Low
         ],
     ),
+]
+
+# For trend_report_{1,2,3}.png (Group D: History & Trends) - the SAME
+# four tests (raw names chosen to match app/test_names/seed_data.py
+# EXACTLY, so every one of these resolves to a real test_alias_id and
+# actually shows up on the trends screen) printed with DIFFERENT values
+# across three reports, so uploading all three - IN NUMBER ORDER, since
+# a report's upload time is what places it on a trend, not the date
+# printed on it - produces a real changing line, not three unrelated
+# single points. White Blood Cell Count is the flagship example: it
+# rises from comfortably normal to clearly High by the third report.
+# Still entirely fabricated data.
+_TREND_REPORTS = [
+    {
+        "fixture_id": "SAMPLE-0004",
+        "report_date": "2026-02-01",
+        "tests": [
+            ("Hemoglobin", "13.8", "g/dL", "12.0-15.5"),
+            ("White Blood Cell Count", "6.2", "x10^3/uL", "4.0-11.0"),
+            ("Platelet Count", "260", "x10^3/uL", "150-400"),
+            ("Glucose", "92", "mg/dL", "70-100"),
+        ],
+    },
+    {
+        "fixture_id": "SAMPLE-0005",
+        "report_date": "2026-04-15",
+        "tests": [
+            ("Hemoglobin", "13.2", "g/dL", "12.0-15.5"),
+            ("White Blood Cell Count", "8.1", "x10^3/uL", "4.0-11.0"),
+            ("Platelet Count", "245", "x10^3/uL", "150-400"),
+            ("Glucose", "98", "mg/dL", "70-100"),
+        ],
+    },
+    {
+        "fixture_id": "SAMPLE-0006",
+        "report_date": "2026-06-30",
+        "tests": [
+            ("Hemoglobin", "12.6", "g/dL", "12.0-15.5"),
+            ("White Blood Cell Count", "11.8", "x10^3/uL", "4.0-11.0"),  # High
+            ("Platelet Count", "230", "x10^3/uL", "150-400"),
+            ("Glucose", "96", "mg/dL", "70-100"),
+        ],
+    },
 ]
 
 
@@ -254,6 +304,62 @@ def _draw_high_res_full_panel_report() -> Image.Image:
     return image
 
 
+def _draw_trend_report(report: dict) -> Image.Image:
+    # Same high-resolution treatment as high_res_full_panel.png (a
+    # single flat table this time - only four tests) so these OCR just
+    # as confidently.
+    width = 1700
+    rows = report["tests"]
+    height = 320 + len(rows) * 78
+
+    image = Image.new("RGB", (width, height), color="white")
+    draw = ImageDraw.Draw(image)
+
+    draw.rectangle([(0, 0), (width, 56)], fill=(255, 230, 150))
+    draw.text(
+        (24, 12),
+        "SYNTHETIC SAMPLE - NOT A REAL PATIENT",
+        fill=(120, 60, 0),
+        font=_font(30, bold=True),
+    )
+
+    draw.text(
+        (24, 90),
+        "Fixture Regional Lab (Synthetic Data)",
+        font=_font(44, bold=True),
+        fill="black",
+    )
+    draw.text(
+        (24, 150),
+        f"Patient: SAMPLE PATIENT   Fixture ID: {report['fixture_id']}",
+        font=_font(28),
+        fill="black",
+    )
+    draw.text(
+        (24, 188),
+        f"Report Date: {report['report_date']}",
+        font=_font(28),
+        fill="black",
+    )
+
+    columns = [("Test", 24), ("Result", 940), ("Unit", 1160), ("Reference Range", 1360)]
+    y = 250
+    for label, x in columns:
+        draw.text((x, y), label, font=_font(26, bold=True), fill="black")
+    y += 36
+    draw.line([(24, y), (width - 24, y)], fill="black", width=2)
+    y += 14
+
+    for test, value, unit, ref_range in rows:
+        draw.text((24, y), test, font=_font(28), fill="black")
+        draw.text((940, y), value, font=_font(28, bold=True), fill="black")
+        draw.text((1160, y), unit, font=_font(28), fill="black")
+        draw.text((1360, y), ref_range, font=_font(28), fill="black")
+        y += 56
+
+    return image
+
+
 def generate_all_fixtures() -> None:
     FIXTURES_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -283,6 +389,10 @@ def generate_all_fixtures() -> None:
 
     high_res_full_panel = _draw_high_res_full_panel_report()
     high_res_full_panel.save(FIXTURES_DIR / "high_res_full_panel.png")
+
+    for index, report in enumerate(_TREND_REPORTS, start=1):
+        trend_image = _draw_trend_report(report)
+        trend_image.save(FIXTURES_DIR / f"trend_report_{index}.png")
 
 
 if __name__ == "__main__":

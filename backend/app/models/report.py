@@ -65,6 +65,13 @@ class Report(Base):
     # The date printed ON the report itself (not the upload date).
     report_date = Column(Date, nullable=True)
 
+    # A user-chosen name for this report (the report history screen's
+    # rename feature). NULL until someone renames it, at which point it
+    # takes priority over original_filename for display - never edited
+    # any other way, and original_filename itself is never touched (it
+    # stays what Task 6's integrity fields actually describe).
+    display_name = Column(String, nullable=True)
+
     # "uploaded" -> "processing" -> "processed" or "failed", kept in
     # sync with the report's OCR job (see app/jobs/service.py).
     status = Column(String, nullable=False, default="uploaded")

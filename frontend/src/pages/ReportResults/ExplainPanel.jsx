@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "../../components/Button/Button";
 import { Input } from "../../components/Input/Input";
 import { describeApiError } from "../../lib/authErrors";
@@ -25,11 +26,12 @@ function formatValue(value, unit) {
  */
 export function ExplainPanel({
   result,
+  reportId,
   onRequestExplanation,
   isExplanationLoading,
   onCorrect,
 }) {
-  const [showTrendNote, setShowTrendNote] = useState(false);
+  const [showUntrackableNote, setShowUntrackableNote] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(result.value);
   const [editReason, setEditReason] = useState("");
@@ -90,9 +92,25 @@ export function ExplainPanel({
       )}
 
       <div className={styles.actions}>
-        <Button type="button" variant="ghost" size="md" onClick={() => setShowTrendNote(true)}>
-          See trend over time
-        </Button>
+        {result.test_alias_id ? (
+          <Button
+            as={Link}
+            to={`/reports/${reportId}/trends?test=${result.test_alias_id}`}
+            variant="ghost"
+            size="md"
+          >
+            See trend over time
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="md"
+            onClick={() => setShowUntrackableNote(true)}
+          >
+            See trend over time
+          </Button>
+        )}
         {!isEditing && (
           <Button type="button" variant="ghost" size="md" onClick={startEditing}>
             Fix this value
@@ -100,10 +118,10 @@ export function ExplainPanel({
         )}
       </div>
 
-      {showTrendNote && (
+      {showUntrackableNote && (
         <p className={styles.comingSoon}>
-          Trends aren't available yet - once you've uploaded more reports, you'll be able to see
-          this value over time here.
+          This test isn't matched to HealthVault's test catalog yet, so there's nothing to
+          safely compare it against over time.
         </p>
       )}
 

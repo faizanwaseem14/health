@@ -4,9 +4,11 @@ import { Landing } from "./pages/Landing/Landing";
 import { Login } from "./pages/Login/Login";
 import { ProfileSetup } from "./pages/ProfileSetup/ProfileSetup";
 import { Home } from "./pages/Home/Home";
+import { History } from "./pages/History/History";
 import { Upload } from "./pages/Upload/Upload";
 import { Processing } from "./pages/Processing/Processing";
 import { ReportResults } from "./pages/ReportResults/ReportResults";
+import { Trends } from "./pages/Trends/Trends";
 import { OcrInspection } from "./pages/OcrInspection/OcrInspection";
 import { RequireAuth } from "./routes/RequireAuth";
 import { RequireProfile } from "./routes/RequireProfile";
@@ -26,9 +28,11 @@ function App() {
           <Route path="profile-setup" element={<ProfileSetup />} />
           <Route element={<RequireProfile />}>
             <Route path="home" element={<Home />} />
+            <Route path="history" element={<History />} />
             <Route path="upload" element={<Upload />} />
             <Route path="reports/:reportId" element={<Processing />} />
             <Route path="reports/:reportId/results" element={<ReportResults />} />
+            <Route path="reports/:reportId/trends" element={<Trends />} />
             <Route path="reports/:reportId/ocr" element={<OcrInspection />} />
           </Route>
         </Route>

@@ -16,6 +16,7 @@ function formatValue(value, unit) {
  */
 export function TestCard({
   result,
+  reportId,
   isSelected,
   onSelect,
   onRequestExplanation,
@@ -65,6 +66,7 @@ export function TestCard({
         <div id={`explain-panel-${result.id}`}>
           <ExplainPanel
             result={result}
+            reportId={reportId}
             onRequestExplanation={onRequestExplanation}
             isExplanationLoading={isExplanationLoading}
             onCorrect={onCorrect}

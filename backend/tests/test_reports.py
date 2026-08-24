@@ -484,3 +484,168 @@ def test_list_reports_for_profile_returns_each_reports_status():
     assert [row["id"] for row in body] == [str(newer_report.id), str(older_report.id)]
     assert body[0]["status"] == "processing"
     assert body[1]["status"] == COMPLETED
+
+
+# --- PATCH /reports/{row_id} (rename) ---
+
+
+def test_rename_requires_login():
+    response = client.patch(
+        f"/reports/{uuid.uuid4()}", json={"display_name": "Blood work"}
+    )
+
+    assert response.status_code == 401
+
+
+def test_rename_rejects_an_empty_name():
+    report = Report(id=uuid.uuid4(), profile_id=uuid.uuid4(), original_filename="a.pdf")
+    app.dependency_overrides[get_current_user] = lambda: User(id=uuid.uuid4())
+    app.dependency_overrides[require_owned_report] = lambda: report
+
+    try:
+        response = client.patch(f"/reports/{report.id}", json={"display_name": ""})
+    finally:
+        _clear_overrides()
+
+    assert response.status_code == 422
+
+
+def test_rename_sets_display_name_and_audits_it():
+    report = Report(
+        id=uuid.uuid4(),
+        profile_id=uuid.uuid4(),
+        original_filename="IMG_4821.jpg",
+        mime_type="image/jpeg",
+        created_at=datetime.now(timezone.utc),
+    )
+    fake_db = MagicMock()
+    from app.auth.dependencies import get_db
+
+    app.dependency_overrides[get_current_user] = lambda: User(id=uuid.uuid4())
+    app.dependency_overrides[require_owned_report] = lambda: report
+    app.dependency_overrides[get_db] = lambda: fake_db
+
+    try:
+        with (
+            patch("app.routers.reports.get_latest_job_for_report", return_value=None),
+            patch("app.routers.reports.record_audit_event") as mock_audit,
+        ):
+            response = client.patch(
+                f"/reports/{report.id}",
+                json={"display_name": "  Blood work - March  "},
+            )
+    finally:
+        _clear_overrides()
+
+    assert response.status_code == 200
+    body = response.json()["data"]
+    # Saved trimmed, not with the stray whitespace the client sent.
+    assert body["display_name"] == "Blood work - March"
+    assert report.display_name == "Blood work - March"
+    # original_filename is never touched by a rename.
+    assert body["original_filename"] == "IMG_4821.jpg"
+    mock_audit.assert_called_once()
+    assert mock_audit.call_args.kwargs["action"] == "rename_report"
+
+
+# --- DELETE /reports/{row_id} ---
+
+
+def test_delete_requires_login():
+    response = client.delete(f"/reports/{uuid.uuid4()}")
+
+    assert response.status_code == 401
+
+
+def test_delete_removes_the_row_and_the_r2_object():
+    report = Report(
+        id=uuid.uuid4(),
+        profile_id=uuid.uuid4(),
+        original_filename="a.pdf",
+        storage_key="reports/abc/def.pdf",
+    )
+    fake_db = MagicMock()
+    from app.auth.dependencies import get_db
+
+    app.dependency_overrides[get_current_user] = lambda: User(id=uuid.uuid4())
+    app.dependency_overrides[require_owned_report] = lambda: report
+    app.dependency_overrides[get_db] = lambda: fake_db
+
+    try:
+        with (
+            patch("app.routers.reports.delete_file_bytes") as mock_delete_r2,
+            patch("app.routers.reports.record_audit_event") as mock_audit,
+        ):
+            response = client.delete(f"/reports/{report.id}")
+    finally:
+        _clear_overrides()
+
+    assert response.status_code == 200
+    assert response.json()["data"]["id"] == str(report.id)
+    fake_db.delete.assert_called_once_with(report)
+    fake_db.commit.assert_called_once()
+    mock_delete_r2.assert_called_once_with("reports/abc/def.pdf")
+    assert mock_audit.call_args.kwargs["action"] == "delete_report"
+
+
+def test_delete_still_succeeds_if_the_r2_object_is_already_gone():
+    # A failed/best-effort R2 cleanup must never turn into a failed
+    # delete from the user's point of view - their data is already
+    # correctly gone from the database either way.
+    report = Report(
+        id=uuid.uuid4(),
+        profile_id=uuid.uuid4(),
+        original_filename="a.pdf",
+        storage_key="reports/abc/def.pdf",
+    )
+    fake_db = MagicMock()
+    from app.auth.dependencies import get_db
+
+    app.dependency_overrides[get_current_user] = lambda: User(id=uuid.uuid4())
+    app.dependency_overrides[require_owned_report] = lambda: report
+    app.dependency_overrides[get_db] = lambda: fake_db
+
+    try:
+        with (
+            patch(
+                "app.routers.reports.delete_file_bytes",
+                side_effect=RuntimeError("network hiccup"),
+            ),
+            patch("app.routers.reports.record_audit_event"),
+        ):
+            response = client.delete(f"/reports/{report.id}")
+    finally:
+        _clear_overrides()
+
+    assert response.status_code == 200
+
+
+# --- GET /reports/{row_id}/trends ---
+
+
+def test_trends_requires_login():
+    response = client.get(f"/reports/{uuid.uuid4()}/trends")
+
+    assert response.status_code == 401
+
+
+def test_trends_returns_whatever_the_service_computes():
+    report = Report(id=uuid.uuid4(), profile_id=uuid.uuid4())
+    fake_trends = [{"test_alias_id": "x", "canonical_name": "Hemoglobin"}]
+    app.dependency_overrides[get_current_user] = lambda: User(id=uuid.uuid4())
+    app.dependency_overrides[require_owned_report] = lambda: report
+
+    try:
+        with patch(
+            "app.routers.reports.compute_report_trends", return_value=fake_trends
+        ) as mock_compute:
+            response = client.get(f"/reports/{report.id}/trends")
+    finally:
+        _clear_overrides()
+
+    assert response.status_code == 200
+    body = response.json()["data"]
+    assert body["report_id"] == str(report.id)
+    assert body["tests"] == fake_trends
+    mock_compute.assert_called_once()
+    assert mock_compute.call_args[0][1] is report

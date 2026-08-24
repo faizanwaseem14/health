@@ -37,6 +37,9 @@ def test_all_fixture_files_exist():
         "multi_page.pdf",
         "unusual_layout.png",
         "high_res_full_panel.png",
+        "trend_report_1.png",
+        "trend_report_2.png",
+        "trend_report_3.png",
     }
     actual = {path.name for path in FIXTURES_DIR.iterdir()}
     assert expected <= actual
@@ -93,6 +96,22 @@ def test_high_res_full_panel_fixture_ocrs_cleanly_with_real_tesseract():
     confidences = [word.confidence for word in result.words if word.text.strip()]
     assert confidences
     assert sum(confidences) / len(confidences) > 0.85
+
+
+def test_trend_report_fixtures_ocr_cleanly_and_share_the_same_test_names():
+    # The whole point of this series (Group D: History & Trends) is
+    # that the SAME four tests appear on all three, just with different
+    # values - proving that here, on the real OCR'd text, is what
+    # actually matters (not just "each file individually OCRs fine").
+    for filename in ("trend_report_1.png", "trend_report_2.png", "trend_report_3.png"):
+        result = TesseractProvider().extract(_read(filename))
+        text = _all_word_text(result).lower()
+        for expected_word in ("hemoglobin", "white", "blood", "platelet", "glucose"):
+            assert expected_word in text, f"{filename!r} missing {expected_word!r}"
+
+        confidences = [word.confidence for word in result.words if word.text.strip()]
+        assert confidences
+        assert sum(confidences) / len(confidences) > 0.85
 
 
 def test_multi_page_fixture_loads_as_two_separate_pages():

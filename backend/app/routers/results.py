@@ -45,6 +45,11 @@ def _result_response(db: Session, result: Result) -> dict:
 
     return {
         "id": str(result.id),
+        # The deterministic catalog match (app/test_names/) - None if
+        # this raw test name hasn't been resolved yet. This is what
+        # trends grouping keys on, NOT canonical_test_name below (the
+        # AI's own free-text guess, never used to decide "same test").
+        "test_alias_id": str(result.test_alias_id) if result.test_alias_id else None,
         "raw_test_name": result.raw_test_name,
         "canonical_test_name": result.canonical_test_name,
         "value": result.value,

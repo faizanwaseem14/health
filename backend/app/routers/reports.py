@@ -23,13 +23,15 @@ from app.jobs.service import (
     retry_failed_job,
 )
 from app.models import Job, Profile, Report, User
+from app.schemas.reports import ReportRenamePayload
 from app.storage.file_validation import (
     EXTENSION_BY_MIME_TYPE,
     read_upload_within_size_limit,
     validate_file_type,
 )
 from app.storage.image_metadata import get_image_dimensions
-from app.storage.r2 import upload_file_bytes
+from app.storage.r2 import delete_file_bytes, upload_file_bytes
+from app.trends.service import compute_report_trends
 
 logger = logging.getLogger("medvault")
 
@@ -137,6 +139,7 @@ def _report_response(report: Report, job: Job | None) -> dict:
         "profile_id": str(report.profile_id),
         "status": report.status,
         "original_filename": report.original_filename,
+        "display_name": report.display_name,
         "mime_type": report.mime_type,
         "created_at": report.created_at.isoformat(),
         "job_id": str(job.id) if job else None,
@@ -234,4 +237,102 @@ def retry_report_processing(
             "job_id": str(job.id),
             "job_status": job.status,
         }
+    )
+
+
+@router.patch("/reports/{row_id}")
+def rename_report(
+    request: Request,
+    payload: ReportRenamePayload,
+    report: Report = Depends(require_owned_report),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    PROTECTED route: gives a report a user-chosen display name (e.g.
+    "IMG_4821.jpg" -> "Blood work - March"). original_filename is never
+    touched - it stays the Task 6 integrity record of what was actually
+    uploaded; display_name is purely a label on top of it.
+    """
+    report.display_name = payload.display_name.strip()
+    db.commit()
+    db.refresh(report)
+
+    record_audit_event(
+        db,
+        action="rename_report",
+        ip_address=request.client.host if request.client else "unknown",
+        user_id=user.id,
+        resource_type="report",
+        resource_id=report.id,
+        user_agent=request.headers.get("user-agent"),
+    )
+
+    job = get_latest_job_for_report(db, report.id)
+    return success_response(_report_response(report, job))
+
+
+@router.delete("/reports/{row_id}")
+def delete_report(
+    request: Request,
+    report: Report = Depends(require_owned_report),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    PROTECTED route: permanently deletes a report and everything
+    derived from it (results, corrections, explanations, OCR evidence,
+    jobs - all ON DELETE CASCADE at the database level from report_id/
+    result_id). The audit log entry for this delete is the one thing
+    that survives, by design (append-only, and never a health value).
+
+    The database row is removed FIRST, inside a normal transaction that
+    can still roll back on failure; the underlying R2 object is only
+    deleted after that commit succeeds. If the R2 delete itself fails
+    (network hiccup), it's logged and swallowed rather than failing the
+    request - the user's data is already correctly gone from their own
+    account either way, and a stray orphaned blob nobody can reach
+    isn't worth blocking on.
+    """
+    report_id = report.id
+    storage_key = report.storage_key
+
+    db.delete(report)
+    db.commit()
+
+    record_audit_event(
+        db,
+        action="delete_report",
+        ip_address=request.client.host if request.client else "unknown",
+        user_id=user.id,
+        resource_type="report",
+        resource_id=report_id,
+        user_agent=request.headers.get("user-agent"),
+    )
+
+    try:
+        delete_file_bytes(storage_key)
+    except Exception:
+        logger.exception(
+            "Failed to delete R2 object %r after report delete", storage_key
+        )
+
+    return success_response({"id": str(report_id)})
+
+
+@router.get("/reports/{row_id}/trends")
+def get_report_trends(
+    report: Report = Depends(require_owned_report),
+    db: Session = Depends(get_db),
+):
+    """
+    PROTECTED route: for every test in THIS report that's resolved to
+    the test-name catalog (test_alias_id set - an unresolved raw name
+    can't be safely grouped with anything from another report), returns
+    its value across EVERY report in the same profile, in report-upload
+    order. See app/trends/service.py for exactly what counts as a
+    genuinely comparable point vs. an excluded one.
+    """
+    return success_response(
+        {"report_id": str(report.id), "tests": compute_report_trends(db, report)}
     )

@@ -135,6 +135,7 @@ def test_list_results_returns_the_full_shape_for_one_result():
     assert len(body) == 1
     row = body[0]
     assert row["id"] == str(result.id)
+    assert row["test_alias_id"] is None
     assert row["raw_test_name"] == "HGB"
     assert row["value"] == "13.5"
     assert row["value_numeric"] == 13.5
@@ -189,6 +190,27 @@ def test_list_results_includes_explanation_and_correction_history():
     assert row["corrections"][0]["previous_value"] == "13.5"
     assert row["corrections"][0]["new_value"] == "9.5"
     assert row["ocr_word_ids"] == [str(ocr_link.ocr_word_id)]
+
+
+def test_list_results_stringifies_a_resolved_test_alias_id():
+    from app.models import Report
+
+    report = Report(id=uuid.uuid4(), profile_id=uuid.uuid4())
+    alias_id = uuid.uuid4()
+    result = _fake_result(report_id=report.id, test_alias_id=alias_id)
+    user = User(id=uuid.uuid4())
+    _override_auth(user, report=report)
+
+    fake_db = MagicMock()
+    fake_db.query.side_effect = _query_side_effect(results=[result])
+    app.dependency_overrides[get_db] = lambda: fake_db
+
+    try:
+        response = client.get(f"/reports/{report.id}/results")
+    finally:
+        _clear_overrides()
+
+    assert response.json()["data"][0]["test_alias_id"] == str(alias_id)
 
 
 # --- POST /reports/{row_id}/explanations ---

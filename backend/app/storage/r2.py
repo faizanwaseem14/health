@@ -97,3 +97,12 @@ def download_file_bytes(storage_key: str) -> bytes:
     """
     response = _r2_client.get_object(Bucket=settings.r2_bucket_name, Key=storage_key)
     return response["Body"].read()
+
+
+def delete_file_bytes(storage_key: str) -> None:
+    """
+    Deletes one object from R2 by its storage key - used when a report
+    is deleted. delete_object is idempotent (deleting a key that's
+    already gone is not an error), so this is always safe to call.
+    """
+    _r2_client.delete_object(Bucket=settings.r2_bucket_name, Key=storage_key)

@@ -1,0 +1,57 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.rangeBand {
+  fill: var(--color-surface-brand);
+}
+
+.line {
+  stroke: var(--color-border-strong);
+  stroke-width: 2;
+}
+
+.axisLabel {
+  font-family: var(--font-body);
+  font-size: 11px;
+  fill: var(--color-text-faint);
+}
+
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.legendRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-sunken);
+  font-size: var(--text-sm);
+}
+
+.legendDate {
+  color: var(--color-text-muted);
+  min-width: 4.5rem;
+}
+
+.legendValue {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+}

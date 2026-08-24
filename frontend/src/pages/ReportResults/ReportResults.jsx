@@ -195,6 +195,7 @@ export function ReportResults() {
                 <TestCard
                   key={result.id}
                   result={result}
+                  reportId={reportId}
                   isSelected={selectedResultId === result.id}
                   onSelect={handleSelectResult}
                   onRequestExplanation={handleRequestExplanation}
@@ -209,12 +210,7 @@ export function ReportResults() {
 
       {results.length > 0 && (
         <div className={styles.bottomActions}>
-          <Button
-            type="button"
-            variant="secondary"
-            size="lg"
-            onClick={() => setComingSoonNote("trends")}
-          >
+          <Button as={Link} to={`/reports/${reportId}/trends`} variant="secondary" size="lg">
             View trends for this report
           </Button>
           <Button
@@ -228,11 +224,7 @@ export function ReportResults() {
         </div>
       )}
       {comingSoonNote && (
-        <p className={styles.comingSoon}>
-          {comingSoonNote === "trends"
-            ? "Trends across your reports are coming soon."
-            : "Sharing reports with your doctor is coming soon."}
-        </p>
+        <p className={styles.comingSoon}>Sharing reports with your doctor is coming soon.</p>
       )}
 
       <Link to="/home" className={styles.homeLink}>

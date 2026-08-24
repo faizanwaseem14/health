@@ -1,0 +1,219 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding-block: var(--space-7) var(--space-8);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.heading {
+  font-size: var(--text-2xl);
+  word-break: break-word;
+}
+
+.intro {
+  color: var(--color-text-muted);
+  line-height: var(--leading-normal);
+}
+
+.backLink {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  text-decoration: underline;
+  white-space: nowrap;
+}
+
+.backLink:hover {
+  color: var(--color-brand);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.sectionHeading {
+  font-size: var(--text-lg);
+  color: var(--color-text);
+}
+
+/* --- overview grid --- */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: var(--space-3);
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-height: var(--tap-target-min);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-raised);
+  text-align: left;
+  font-family: var(--font-body);
+  cursor: default;
+}
+
+button.tile {
+  cursor: pointer;
+}
+
+button.tile:hover,
+button.tile:focus-visible {
+  border-color: var(--color-brand);
+  outline: none;
+}
+
+.tileOutOfRange {
+  background: var(--color-status-attention-bg);
+  border-color: transparent;
+}
+
+.tileSelected {
+  border-color: var(--color-accent);
+  border-width: 2px;
+}
+
+.tileName {
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+}
+
+.tileValue {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-lg);
+  color: var(--color-text);
+}
+
+.tileBadge {
+  align-self: flex-start;
+}
+
+.tileNote {
+  color: var(--color-text-faint);
+  font-size: var(--text-sm);
+}
+
+/* --- chips --- */
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.chip {
+  min-height: var(--tap-target-min);
+  padding-inline: var(--space-5);
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--color-border-strong);
+  background: var(--color-bg-raised);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-weight: var(--weight-medium);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.chip:hover {
+  border-color: var(--color-brand);
+}
+
+.chipSelected {
+  background: var(--color-button-primary-bg);
+  border-color: var(--color-button-primary-bg);
+  color: var(--color-button-primary-text);
+}
+
+/* --- test detail panel --- */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-raised);
+  padding: var(--space-5);
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.latestLabel {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.latestValue {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-2xl);
+  color: var(--color-text);
+}
+
+.rangeNote {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.factualNote {
+  color: var(--color-text);
+  background: var(--color-surface-brand);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+  font-weight: var(--weight-medium);
+}
+
+.singlePointNote {
+  color: var(--color-text-muted);
+  font-style: italic;
+  padding: var(--space-4);
+  background: var(--color-bg-sunken);
+  border-radius: var(--radius-sm);
+}
+
+.excludedNote {
+  color: var(--color-text-faint);
+  font-size: var(--text-sm);
+}
+
+.safetyFooter {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  background: var(--color-surface-brand);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+}
+
+.safetyFooter svg {
+  flex-shrink: 0;
+  color: var(--color-brand);
+  margin-top: 0.1em;
+}

@@ -77,7 +77,12 @@ export function Home() {
         )}
         {reports?.length > 0 && (
           <div className={styles.reportList}>
-            <h2 className={styles.reportListHeading}>Your reports</h2>
+            <div className={styles.reportListHeader}>
+              <h2 className={styles.reportListHeading}>Your reports</h2>
+              <Link to="/history" className={styles.historyLink}>
+                See full history ↗
+              </Link>
+            </div>
             {reports.map((report) => (
               <ReportRow key={report.id} report={report} />
             ))}
