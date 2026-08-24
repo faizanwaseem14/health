@@ -178,13 +178,18 @@ def check_database_connection() -> None:
     specific warning if they've drifted apart - a mismatch here causes
     exactly the kind of confusing mid-request database error (a column
     the code expects that the live table doesn't have yet) that's easy
-    to mistake for a flaky connection. Never raises on its own - this is
-    a diagnostic, not a hard requirement to serve traffic.
+    to mistake for a flaky connection. Also warns if the test_aliases
+    catalog is empty - a database that's never had
+    `python -m app.test_names.seed` run against it, which silently
+    disables trend tracking (every result stays unmatched) without ever
+    raising an error anywhere. Neither check ever raises on its own -
+    both are diagnostics, not a hard requirement to serve traffic.
     """
     with engine.connect() as connection:
         connection.execute(text("SELECT 1"))
 
     _warn_if_migrations_are_behind()
+    _warn_if_test_alias_catalog_is_empty()
 
 
 def _warn_if_migrations_are_behind() -> None:
@@ -217,4 +222,26 @@ def _warn_if_migrations_are_behind() -> None:
             "`alembic upgrade head` against this database.",
             db_version,
             code_head,
+        )
+
+
+def _warn_if_test_alias_catalog_is_empty() -> None:
+    try:
+        from app.models import TestAlias
+
+        with SessionLocal() as session:
+            has_any_alias = session.query(TestAlias.id).first() is not None
+    except Exception:
+        logger.debug("Could not check the test_aliases catalog.", exc_info=True)
+        return
+
+    if not has_any_alias:
+        logger.warning(
+            "TEST ALIAS CATALOG IS EMPTY: the test_aliases table has no rows, "
+            "so no result on any report can match the catalog - trends will "
+            "show every test as 'not tracked over time' no matter how many "
+            "reports are uploaded. Fix: run `python -m app.test_names.seed` "
+            "against this database, then `python -m app.test_names.backfill` "
+            "to re-resolve any reports already processed before the catalog "
+            "was seeded."
         )

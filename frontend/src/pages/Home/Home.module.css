@@ -4,35 +4,83 @@
   padding-block: var(--space-8);
 }
 
-.card {
+.page {
   width: 100%;
   max-width: 32rem;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-4);
+  gap: var(--space-6);
 }
 
 .heading {
   font-size: var(--text-2xl);
 }
 
-.detail {
-  color: var(--color-text);
-  font-size: var(--text-lg);
+.subheading {
+  color: var(--color-text-muted);
+  font-size: var(--text-base);
+  margin-top: var(--space-2);
 }
 
-.note {
-  color: var(--color-text-muted);
-  line-height: var(--leading-normal);
+.uploadCard {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-3);
+  background: var(--color-surface-brand);
+  border-color: var(--color-brand);
 }
 
 .uploadButton {
-  align-self: stretch;
+  width: 100%;
+}
+
+.uploadHint {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
+.quickLinks {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.quickLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--tap-target-min);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-raised);
+  color: var(--color-text);
+  font-weight: var(--weight-medium);
+  font-size: var(--text-sm);
+  text-align: center;
+  text-decoration: none;
+  transition: border-color var(--motion-fast) var(--motion-ease);
+}
+
+.quickLink:hover {
+  border-color: var(--color-brand);
+  color: var(--color-brand);
+}
+
+.quickLinkDisabled {
+  color: var(--color-text-muted);
+  cursor: default;
+}
+
+.quickLinkDisabled:hover {
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
 }
 
 .reportList {
-  align-self: stretch;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -44,7 +92,6 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: var(--space-2);
-  margin-top: var(--space-2);
 }
 
 .reportListHeading {
@@ -61,6 +108,11 @@
 
 .historyLink:hover {
   color: var(--color-brand);
+}
+
+.note {
+  color: var(--color-text-muted);
+  line-height: var(--leading-normal);
 }
 
 .reportRow {

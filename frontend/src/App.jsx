@@ -4,6 +4,7 @@ import { Landing } from "./pages/Landing/Landing";
 import { Login } from "./pages/Login/Login";
 import { ProfileSetup } from "./pages/ProfileSetup/ProfileSetup";
 import { Home } from "./pages/Home/Home";
+import { Account } from "./pages/Account/Account";
 import { History } from "./pages/History/History";
 import { Upload } from "./pages/Upload/Upload";
 import { Processing } from "./pages/Processing/Processing";
@@ -28,6 +29,7 @@ function App() {
           <Route path="profile-setup" element={<ProfileSetup />} />
           <Route element={<RequireProfile />}>
             <Route path="home" element={<Home />} />
+            <Route path="account" element={<Account />} />
             <Route path="history" element={<History />} />
             <Route path="upload" element={<Upload />} />
             <Route path="reports/:reportId" element={<Processing />} />

@@ -19,9 +19,20 @@ export function Layout() {
             <Logo />
           </Link>
           <div className={styles.headerActions}>
-            <Link to={isAuthenticated ? "/home" : "/login"} className={styles.accountLink}>
-              {isAuthenticated ? "My account" : "Sign in"}
-            </Link>
+            {isAuthenticated ? (
+              <>
+                <Link to="/home" className={styles.accountLink}>
+                  Home
+                </Link>
+                <Link to="/account" className={styles.accountLink}>
+                  My account
+                </Link>
+              </>
+            ) : (
+              <Link to="/login" className={styles.accountLink}>
+                Sign in
+              </Link>
+            )}
             <ThemeToggle />
           </div>
         </div>

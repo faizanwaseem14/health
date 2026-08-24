@@ -238,3 +238,44 @@ def test_migration_check_never_raises_even_if_it_cannot_run():
     with patch("app.database.engine") as mock_engine:
         mock_engine.connect.side_effect = RuntimeError("boom")
         _warn_if_migrations_are_behind()  # must not raise
+
+
+# --- empty test-alias catalog diagnostic ---
+
+
+def _fake_session(first_alias_id):
+    fake_session = MagicMock()
+    fake_session.__enter__.return_value = fake_session
+    fake_session.query.return_value.first.return_value = first_alias_id
+    return fake_session
+
+
+def test_warns_when_the_test_alias_catalog_is_empty(caplog):
+    from app.database import _warn_if_test_alias_catalog_is_empty
+
+    with patch("app.database.SessionLocal", return_value=_fake_session(None)):
+        with caplog.at_level(logging.WARNING, logger="medvault"):
+            _warn_if_test_alias_catalog_is_empty()
+
+    assert any(
+        "TEST ALIAS CATALOG IS EMPTY" in record.message for record in caplog.records
+    )
+
+
+def test_does_not_warn_when_the_catalog_has_at_least_one_alias(caplog):
+    from app.database import _warn_if_test_alias_catalog_is_empty
+
+    with patch("app.database.SessionLocal", return_value=_fake_session(("some-id",))):
+        with caplog.at_level(logging.WARNING, logger="medvault"):
+            _warn_if_test_alias_catalog_is_empty()
+
+    assert not any(
+        "TEST ALIAS CATALOG IS EMPTY" in record.message for record in caplog.records
+    )
+
+
+def test_catalog_check_never_raises_even_if_it_cannot_run():
+    from app.database import _warn_if_test_alias_catalog_is_empty
+
+    with patch("app.database.SessionLocal", side_effect=RuntimeError("boom")):
+        _warn_if_test_alias_catalog_is_empty()  # must not raise
