@@ -17,6 +17,7 @@ from app.auth.dependencies import get_current_user, get_db
 from app.auth.ownership import require_owned_row
 from app.core.audit import record_audit_event
 from app.core.responses import success_response
+from app.database import commit_with_retry
 from app.jobs.service import (
     create_and_enqueue_job,
     get_latest_job_for_report,
@@ -94,8 +95,7 @@ async def upload_report(
         original_height=height,
         status="uploaded",
     )
-    db.add(report)
-    db.commit()
+    commit_with_retry(db, lambda: db.add(report))
     db.refresh(report)
 
     record_audit_event(
@@ -254,8 +254,8 @@ def rename_report(
     touched - it stays the Task 6 integrity record of what was actually
     uploaded; display_name is purely a label on top of it.
     """
-    report.display_name = payload.display_name.strip()
-    db.commit()
+    new_display_name = payload.display_name.strip()
+    commit_with_retry(db, lambda: setattr(report, "display_name", new_display_name))
     db.refresh(report)
 
     record_audit_event(
@@ -297,8 +297,7 @@ def delete_report(
     report_id = report.id
     storage_key = report.storage_key
 
-    db.delete(report)
-    db.commit()
+    commit_with_retry(db, lambda: db.delete(report))
 
     record_audit_event(
         db,

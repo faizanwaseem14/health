@@ -21,6 +21,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.database import commit_with_retry
 from app.models import AuditLog
 
 # Every kind of event we actually log. Add to this list in a code review
@@ -101,7 +102,6 @@ def record_audit_event(
         ip_address=ip_address,
         user_agent=user_agent,
     )
-    db.add(entry)
-    db.commit()
+    commit_with_retry(db, lambda: db.add(entry))
     db.refresh(entry)
     return entry

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user, get_db
 from app.core.responses import success_response
+from app.database import commit_with_retry
 from app.models import Profile, User
 from app.schemas.profile import ProfileCreatePayload
 
@@ -67,7 +68,6 @@ def create_profile(
         date_of_birth=payload.date_of_birth,
         sex=payload.sex,
     )
-    db.add(profile)
-    db.commit()
+    commit_with_retry(db, lambda: db.add(profile))
     db.refresh(profile)
     return success_response(_serialize(profile), status_code=201)

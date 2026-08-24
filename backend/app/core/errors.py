@@ -15,11 +15,12 @@ import logging
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import InterfaceError, OperationalError, SQLAlchemyError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.auth.rate_limit import OtpRateLimitExceededError
 from app.auth.recovery import RecoveryCodeInvalidError
+from app.database import describe_db_error
 from app.jobs.service import JobNotRetryableError
 from app.storage.file_validation import FileTooLargeError, InvalidFileTypeError
 
@@ -83,7 +84,35 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def handle_database_error(request: Request, exc: SQLAlchemyError):
         # Log the full error for us to debug, but NEVER send database
         # internals (host, credentials, query text) back in the response.
-        logger.exception("Unhandled database error")
+        #
+        # The real driver-level error (e.g. psycopg2's own exception
+        # class and message) is pulled out and logged explicitly, plus a
+        # blunt classification of whether this looks like a transient
+        # connection problem (retry-worthy - see
+        # app.database.commit_with_retry, which already retries these
+        # automatically for a commit specifically) or a real schema/data
+        # problem (retrying will NOT help - e.g. a column the code
+        # expects that a pending migration hasn't added yet).
+        if isinstance(exc, (OperationalError, InterfaceError)):
+            classification = (
+                "TRANSIENT connection error (dropped/reset connection, timed-out "
+                "connect, or the DB server closing the socket) - if this is "
+                "showing up here rather than being retried, it happened outside "
+                "a commit_with_retry()-protected write."
+            )
+        else:
+            classification = (
+                "NOT a connection error - this is a real problem with the SQL "
+                "itself (a missing column/table from a migration that hasn't "
+                "been applied, a bad query, a permissions issue, ...). "
+                "Retrying will not fix this."
+            )
+        logger.error(
+            "Unhandled database error - %s\nUnderlying error: %s",
+            classification,
+            describe_db_error(exc),
+            exc_info=True,
+        )
         return _error_response(
             status.HTTP_503_SERVICE_UNAVAILABLE,
             "A database error occurred. Please try again.",

@@ -13,6 +13,7 @@ from app.auth.dependencies import get_current_user, get_db
 from app.auth.ownership import require_owned_row
 from app.core.audit import record_audit_event
 from app.core.responses import success_response
+from app.database import commit_with_retry
 from app.models import Correction, Explanation, Report, Result, ResultOcrWord, User
 from app.routers.reports import require_owned_report
 from app.schemas.results import CORRECTABLE_FIELDS, CorrectionCreatePayload
@@ -186,28 +187,32 @@ def create_correction(
 
     previous_value = getattr(result, payload.field_name)
 
-    correction = Correction(
-        result_id=result.id,
-        corrected_by_user_id=user.id,
-        field_name=payload.field_name,
-        previous_value=previous_value,
-        new_value=payload.new_value,
-        reason=payload.reason,
-    )
-    db.add(correction)
+    def apply_correction():
+        correction = Correction(
+            result_id=result.id,
+            corrected_by_user_id=user.id,
+            field_name=payload.field_name,
+            previous_value=previous_value,
+            new_value=payload.new_value,
+            reason=payload.reason,
+        )
+        db.add(correction)
 
-    setattr(result, payload.field_name, payload.new_value)
-    if payload.field_name == "value":
-        # Keep the deterministic status in sync with the corrected
-        # value, using the exact same pure code Task 19/20 already
-        # computes it with for a fresh extraction - never a guess, and
-        # never touching trust_status (that's a historical record of
-        # the AI extraction's own trust checks, not of this edit).
-        parsed = parse_comparator_and_number(payload.new_value)
-        result.value_numeric = parsed[1] if parsed is not None else None
-        result.flag = calculate_status(payload.new_value, result.reference_range_text)
+        setattr(result, payload.field_name, payload.new_value)
+        if payload.field_name == "value":
+            # Keep the deterministic status in sync with the corrected
+            # value, using the exact same pure code Task 19/20 already
+            # computes it with for a fresh extraction - never a guess,
+            # and never touching trust_status (that's a historical
+            # record of the AI extraction's own trust checks, not of
+            # this edit).
+            parsed = parse_comparator_and_number(payload.new_value)
+            result.value_numeric = parsed[1] if parsed is not None else None
+            result.flag = calculate_status(
+                payload.new_value, result.reference_range_text
+            )
 
-    db.commit()
+    commit_with_retry(db, apply_correction)
     db.refresh(result)
 
     record_audit_event(

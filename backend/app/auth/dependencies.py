@@ -11,7 +11,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.auth.firebase import InvalidFirebaseTokenError, verify_id_token
-from app.database import SessionLocal
+from app.database import SessionLocal, commit_with_retry
 from app.models import User
 
 # auto_error=False means: if there's no Authorization header at all,
@@ -56,21 +56,31 @@ def resolve_or_create_user(decoded_token: dict, db: Session) -> User:
         )
 
     user = db.query(User).filter(User.firebase_uid == firebase_uid).first()
-
-    if user is None:
+    is_new_user = user is None
+    if is_new_user:
         user = User(firebase_uid=firebase_uid, phone_number=phone_number, email=email)
-        db.add(user)
-    else:
-        # Backfill whichever identifier this token has that the stored
-        # row doesn't yet - e.g. someone who first signed in with Google
-        # later links a phone number via Firebase account linking.
-        if phone_number and not user.phone_number:
-            user.phone_number = phone_number
-        if email and not user.email:
-            user.email = email
 
-    user.last_login_at = datetime.now(timezone.utc)
-    db.commit()
+    def apply_login():
+        if is_new_user:
+            # Re-staging an object already pending is a harmless no-op -
+            # this needs to run on every retry attempt, not just the
+            # first, since a rollback() before a retry discards a
+            # not-yet-committed add() along with everything else.
+            db.add(user)
+        else:
+            # Backfill whichever identifier this token has that the
+            # stored row doesn't yet - e.g. someone who first signed in
+            # with Google later links a phone number via Firebase
+            # account linking. Re-checked fresh on every attempt since a
+            # retry's rollback() would revert a partial backfill from a
+            # failed attempt.
+            if phone_number and not user.phone_number:
+                user.phone_number = phone_number
+            if email and not user.email:
+                user.email = email
+        user.last_login_at = datetime.now(timezone.utc)
+
+    commit_with_retry(db, apply_login)
     db.refresh(user)
     return user
 
