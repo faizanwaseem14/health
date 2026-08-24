@@ -19,7 +19,7 @@
   color: var(--color-text);
   font-size: var(--text-base);
   line-height: var(--leading-normal);
-  background: var(--color-surface-brand);
+  background: var(--color-bg-sunken);
   border-radius: var(--radius-sm);
   padding: var(--space-4);
 }

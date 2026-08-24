@@ -103,7 +103,7 @@
   padding: var(--space-4);
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-brand);
-  background: var(--color-surface-brand);
+  background: var(--color-bg-sunken);
 }
 
 .codeLabel {

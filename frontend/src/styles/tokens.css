@@ -103,15 +103,22 @@
   --color-accent: var(--clay-600);
   --color-accent-strong: var(--clay-700);
 
-  /* Solid button fills: deliberately held CONSTANT across themes
-     (not adaptive like --color-brand above) — a dark sage/clay chip
-     with light text reads clearly against both a pale sand page and
-     a dark charcoal page, so buttons don't need separate light/dark
-     contrast math. */
-  --color-button-primary-bg: var(--sage-700);
-  --color-button-primary-bg-hover: var(--sage-800);
-  --color-button-primary-text: var(--sand-50);
+  /* The primary button: a refined light/white button with a sage
+     accent (border + text), never a big solid green fill - sage is a
+     SPARING accent app-wide, not a dominant color. Built from the
+     semantic tokens above (not raw palette values) so it adapts
+     correctly per theme automatically, with no separate dark-mode
+     override needed here. */
+  --color-button-primary-bg: var(--color-bg-raised);
+  --color-button-primary-bg-hover: var(--color-surface-brand);
+  --color-button-primary-border: var(--color-brand);
+  --color-button-primary-text: var(--color-brand-strong);
 
+  /* The one SOLID color fill buttons still use, reserved for a
+     destructive confirmation (e.g. "Yes, delete") - deliberately held
+     constant across themes like the old primary fill used to be, since
+     that's exactly the kind of small, rare, high-stakes button a solid
+     color is appropriate for. */
   --color-button-accent-bg: var(--clay-600);
   --color-button-accent-bg-hover: var(--clay-700);
   --color-button-accent-text: var(--sand-50);
@@ -128,6 +135,20 @@
   --color-status-pending-bg: var(--status-pending-100);
   --color-status-low-fg: var(--status-low-600);
   --color-status-low-bg: var(--status-low-100);
+
+  /* Trend chart marks: deliberately its own small palette, not a
+     reuse of --color-status-good-fg (green) - a chart with dozens of
+     in-range points repeats that color far more than a single status
+     badge ever does, so "in range" is a muted neutral here instead.
+     Out-of-range stays ONE color (amber) for both high and low - shape
+     (triangle up/down) carries that distinction instead, exactly as
+     the chart's own accessibility contract already relies on shape,
+     never color alone. */
+  --color-chart-line: var(--color-text-muted);
+  --color-chart-grid: var(--color-border);
+  --color-chart-range-band: var(--color-bg-sunken);
+  --color-chart-marker-in-range: var(--color-text-muted);
+  --color-chart-marker-out-of-range: var(--status-attention-600);
 
   --shadow-color: 42, 36, 28;
   --shadow-sm: 0 1px 3px rgba(var(--shadow-color), 0.1);

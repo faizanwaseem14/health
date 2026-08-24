@@ -136,9 +136,9 @@ button.tile:focus-visible {
 }
 
 .chipSelected {
-  background: var(--color-button-primary-bg);
-  border-color: var(--color-button-primary-bg);
-  color: var(--color-button-primary-text);
+  background: var(--color-surface-brand);
+  border-color: var(--color-brand);
+  color: var(--color-brand-strong);
 }
 
 /* --- test detail panel --- */
@@ -180,7 +180,7 @@ button.tile:focus-visible {
 
 .factualNote {
   color: var(--color-text);
-  background: var(--color-surface-brand);
+  background: var(--color-bg-sunken);
   border-radius: var(--radius-sm);
   padding: var(--space-3) var(--space-4);
   font-weight: var(--weight-medium);
@@ -204,7 +204,7 @@ button.tile:focus-visible {
   align-items: flex-start;
   gap: var(--space-3);
   padding: var(--space-5);
-  background: var(--color-surface-brand);
+  background: var(--color-bg-sunken);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   color: var(--color-text-muted);

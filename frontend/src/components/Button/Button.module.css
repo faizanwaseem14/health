@@ -36,6 +36,7 @@
 
 .primary {
   background: var(--color-button-primary-bg);
+  border-color: var(--color-button-primary-border);
   color: var(--color-button-primary-text);
   box-shadow: var(--shadow-sm);
 }

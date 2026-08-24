@@ -7,6 +7,14 @@ import { useAuth } from "../../context/AuthContext";
 import { describeReportStatus } from "../../lib/reportStatus";
 import styles from "./Home.module.css";
 
+function formatShortDate(iso) {
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 function ReportRow({ report }) {
   const { tone, label } = describeReportStatus(report);
   const destination =
@@ -16,8 +24,11 @@ function ReportRow({ report }) {
 
   return (
     <Link to={destination} className={styles.reportRow}>
-      <span className={styles.reportName}>
-        {report.display_name || report.original_filename}
+      <span className={styles.reportMain}>
+        <span className={styles.reportName}>
+          {report.display_name || report.original_filename}
+        </span>
+        <span className={styles.reportDate}>{formatShortDate(report.created_at)}</span>
       </span>
       <StatusBadge tone={tone} label={label} />
     </Link>
@@ -90,8 +101,9 @@ export function Home() {
           <h1 className={styles.heading}>
             Welcome{primaryProfile ? `, ${primaryProfile.full_name}` : ""}.
           </h1>
-          <p className={styles.subheading}>
-            Upload a lab report to get started, or pick up where you left off below.
+          <p className={styles.intro}>
+            HealthVault turns your lab reports into results you can actually understand
+            — organized in one place, explained in plain language, and kept private.
           </p>
         </div>
 
@@ -106,7 +118,7 @@ export function Home() {
             Upload a report
           </Button>
           <p className={styles.uploadHint}>
-            A PDF or photo of any lab report - HealthVault extracts and explains the
+            A PDF or photo of any lab report — HealthVault extracts and explains the
             results for you.
           </p>
         </Card>

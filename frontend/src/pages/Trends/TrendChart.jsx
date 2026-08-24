@@ -2,15 +2,16 @@ import { StatusBadge } from "../../components/StatusBadge/StatusBadge";
 import { describeResultFlag } from "../../lib/resultStatus";
 import styles from "./TrendChart.module.css";
 
-const TONE_COLOR_VAR = {
-  good: "var(--color-status-good-fg)",
-  attention: "var(--color-status-attention-fg)",
-  low: "var(--color-status-low-fg)",
-};
-const DEFAULT_COLOR_VAR = "var(--color-status-pending-fg)";
-
 function formatShortDate(iso) {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+// Keeps a tick label short without hiding real precision: an integer
+// stays an integer, anything else gets exactly one decimal place -
+// never more, so labels like "98.427182" (a floating-point artifact of
+// the min/max/margin math below, not a real reading) can't appear.
+function formatTick(value) {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
 // Only a strict "NUMBER - NUMBER" range can be drawn as a band - same
@@ -29,20 +30,24 @@ function parseStrictRange(text) {
 }
 
 const WIDTH = 640;
-const HEIGHT = 220;
-const PAD_X = 28;
-const PAD_TOP = 20;
-const PAD_BOTTOM = 36;
+const HEIGHT = 240;
+const PAD_LEFT = 46;
+const PAD_RIGHT = 16;
+const PAD_TOP = 16;
+const PAD_BOTTOM = 32;
+const TICK_COUNT = 4;
+const POINT_RADIUS = 3.5;
 
 /**
- * A test's value over time - a line through every genuinely comparable
- * point (see app/trends/service.py for what "comparable" means), each
- * marked normal (circle), high (triangle pointing up), or low (triangle
- * pointing down), always in the tone + shape pair StatusBadge itself
- * uses - color is never the only signal. The legend below repeats
- * every point as plain text + a real <StatusBadge>, which is the
- * authoritative, fully accessible version of the same data the chart
- * draws visually.
+ * A test's value over time - a thin line through every genuinely
+ * comparable point (see app/trends/service.py for what "comparable"
+ * means). Deliberately a plain, mostly-monochrome chart: an in-range
+ * point is a small neutral dot, an out-of-range point is a small amber
+ * triangle (pointing toward "high" or "low"), so direction+shape - not
+ * a rainbow of hues - is what a colorblind reader relies on. The
+ * legend below repeats every point as plain text + a real
+ * <StatusBadge>, which is the authoritative, fully accessible version
+ * of the same data the chart draws visually.
  */
 export function TrendChart({ points, referenceRangeText }) {
   const range = parseStrictRange(referenceRangeText);
@@ -61,12 +66,12 @@ export function TrendChart({ points, referenceRangeText }) {
   min -= margin;
   max += margin;
 
-  const plotWidth = WIDTH - PAD_X * 2;
+  const plotWidth = WIDTH - PAD_LEFT - PAD_RIGHT;
   const plotHeight = HEIGHT - PAD_TOP - PAD_BOTTOM;
 
   function xFor(index) {
-    if (points.length === 1) return PAD_X + plotWidth / 2;
-    return PAD_X + (index / (points.length - 1)) * plotWidth;
+    if (points.length === 1) return PAD_LEFT + plotWidth / 2;
+    return PAD_LEFT + (index / (points.length - 1)) * plotWidth;
   }
   function yFor(value) {
     return PAD_TOP + (1 - (value - min) / (max - min)) * plotHeight;
@@ -76,6 +81,11 @@ export function TrendChart({ points, referenceRangeText }) {
     .map((point, index) => `${index === 0 ? "M" : "L"} ${xFor(index)} ${yFor(point.value)}`)
     .join(" ");
 
+  const ticks = Array.from({ length: TICK_COUNT + 1 }, (_, i) => {
+    const value = min + ((max - min) * i) / TICK_COUNT;
+    return { value, y: yFor(value) };
+  });
+
   return (
     <div className={styles.wrap}>
       <svg
@@ -84,37 +94,64 @@ export function TrendChart({ points, referenceRangeText }) {
         role="img"
         aria-label={`Trend chart with ${points.length} data points`}
       >
+        {ticks.map((tick) => (
+          <g key={tick.value}>
+            <line
+              x1={PAD_LEFT}
+              x2={WIDTH - PAD_RIGHT}
+              y1={tick.y}
+              y2={tick.y}
+              className={styles.gridline}
+            />
+            <text x={PAD_LEFT - 8} y={tick.y} textAnchor="end" className={styles.axisLabel}>
+              {formatTick(tick.value)}
+            </text>
+          </g>
+        ))}
+
         {range && (
           <rect
-            x={PAD_X}
+            x={PAD_LEFT}
             y={yFor(range.high)}
             width={plotWidth}
             height={Math.max(0, yFor(range.low) - yFor(range.high))}
             className={styles.rangeBand}
           />
         )}
+
         <path d={linePath} className={styles.line} fill="none" />
+
         {points.map((point, index) => {
           const badge = describeResultFlag(point.flag);
-          const colorVar = badge ? TONE_COLOR_VAR[badge.tone] : DEFAULT_COLOR_VAR;
+          const isOutOfRange = point.flag === "high" || point.flag === "low";
           const x = xFor(index);
           const y = yFor(point.value);
           return (
             <g key={`${point.report_id}-${index}`}>
               {point.flag === "high" ? (
                 <polygon
-                  points={`${x},${y - 8} ${x - 7},${y + 6} ${x + 7},${y + 6}`}
-                  style={{ fill: colorVar }}
+                  points={`${x},${y - 6} ${x - 5.5},${y + 4.5} ${x + 5.5},${y + 4.5}`}
+                  className={styles.markerOutOfRange}
                 />
               ) : point.flag === "low" ? (
                 <polygon
-                  points={`${x},${y + 8} ${x - 7},${y - 6} ${x + 7},${y - 6}`}
-                  style={{ fill: colorVar }}
+                  points={`${x},${y + 6} ${x - 5.5},${y - 4.5} ${x + 5.5},${y - 4.5}`}
+                  className={styles.markerOutOfRange}
                 />
               ) : (
-                <circle cx={x} cy={y} r={6} style={{ fill: colorVar }} />
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={POINT_RADIUS}
+                  className={isOutOfRange ? styles.markerOutOfRange : styles.markerInRange}
+                />
               )}
-              <text x={x} y={HEIGHT - PAD_BOTTOM + 20} textAnchor="middle" className={styles.axisLabel}>
+              <text
+                x={x}
+                y={HEIGHT - PAD_BOTTOM + 20}
+                textAnchor="middle"
+                className={styles.axisLabel}
+              >
                 {formatShortDate(point.date)}
               </text>
               <title>
@@ -125,6 +162,21 @@ export function TrendChart({ points, referenceRangeText }) {
           );
         })}
       </svg>
+
+      <ul className={styles.legendKey}>
+        <li className={styles.legendKeyItem}>
+          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+            <circle cx="6" cy="6" r="4" className={styles.markerInRange} />
+          </svg>
+          <span>In range</span>
+        </li>
+        <li className={styles.legendKeyItem}>
+          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+            <polygon points="6,1 1,10 11,10" className={styles.markerOutOfRange} />
+          </svg>
+          <span>Out of range</span>
+        </li>
+      </ul>
 
       <ul className={styles.legend}>
         {points.map((point, index) => {
