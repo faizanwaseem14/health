@@ -34,15 +34,19 @@
   --clay-600: #a85c3f;
   --clay-700: #8d4a32;
 
-  --sand-50: #fdfaf5;
-  --sand-100: #faf5ec;
-  --sand-200: #f2e9d8;
-  --sand-300: #e6d9c0;
+  /* Clean, light, near-neutral surfaces - a "modern health tool" base,
+     not a warm/cozy one. A faint sage cast keeps it feeling like part
+     of the same earthy brand rather than generic gray, but it reads as
+     white/near-white at a glance, with no beige or yellow tint. */
+  --sand-50: #ffffff;
+  --sand-100: #f6f7f4;
+  --sand-200: #eef0eb;
+  --sand-300: #dde2d6;
 
-  --ink-100: #d8d2c6;
-  --ink-400: #665c4b;
-  --ink-700: #453c30;
-  --ink-900: #2a2418;
+  --ink-100: #dfe3da;
+  --ink-400: #5f6a5a;
+  --ink-700: #3a4234;
+  --ink-900: #20251d;
 
   --charcoal-950: #1c1712;
   --charcoal-900: #221d17;

@@ -75,13 +75,16 @@
   font-weight: var(--weight-medium);
 }
 
+/* The report image sits directly on the same white the panel card
+   itself uses - a hairline border is enough to define its edge, no
+   separate tinted frame color bleeding around it. */
 .imageFrame {
   min-height: 16rem;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-md);
-  background: var(--color-bg-sunken);
+  background: var(--color-bg-raised);
   border: 1px solid var(--color-border);
   overflow: auto;
 }

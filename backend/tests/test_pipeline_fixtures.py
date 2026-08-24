@@ -29,13 +29,14 @@ def _all_word_text(result) -> str:
     return " ".join(word.text for word in result.words)
 
 
-def test_all_five_fixture_files_exist():
+def test_all_fixture_files_exist():
     expected = {
         "clear.png",
         "blurry.png",
         "rotated.png",
         "multi_page.pdf",
         "unusual_layout.png",
+        "high_res_full_panel.png",
     }
     actual = {path.name for path in FIXTURES_DIR.iterdir()}
     assert expected <= actual
@@ -75,6 +76,23 @@ def test_unusual_layout_fixture_ocrs_cleanly_with_real_tesseract():
     assert len(result.words) > 0
     text = _all_word_text(result).lower()
     assert "hemoglobin" in text
+
+
+def test_high_res_full_panel_fixture_ocrs_cleanly_with_real_tesseract():
+    # This fixture is deliberately large/high-resolution, so it's the
+    # one to prove reads with real confidence, not just "some words
+    # came back" - and it carries both High and Low values, unlike the
+    # other fixtures above (all in-range on purpose).
+    result = TesseractProvider().extract(_read("high_res_full_panel.png"))
+
+    assert len(result.words) > 20
+    text = _all_word_text(result).lower()
+    for expected_word in ("hemoglobin", "glucose", "cholesterol", "creatinine"):
+        assert expected_word in text
+
+    confidences = [word.confidence for word in result.words if word.text.strip()]
+    assert confidences
+    assert sum(confidences) / len(confidences) > 0.85
 
 
 def test_multi_page_fixture_loads_as_two_separate_pages():

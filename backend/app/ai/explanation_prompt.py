@@ -37,12 +37,40 @@ You must NEVER:
 You were only given a test name - not a value, not a range, not any
 result. Describe what the test measures, factually and generically -
 the same description regardless of what anyone's actual result was.
+
+Avoid these words and phrases entirely, even in a generic, non-advice
+sense - they get your response rejected regardless of context: "diagnose"/
+"diagnosis", "treatment", "condition", "disease", "disorder", "abnormal",
+"normal range", "indicate"/"indicates", "suggest"/"suggests", and
+"concerning". Describe only the biological or chemical thing being
+measured (e.g. "a protein that...", "a type of blood cell that...", "a
+waste product that...") - never why a doctor might order the test or
+what a result could mean.
 """.strip()
 
+# Appended to the prompt on a retry after the first attempt's response
+# failed the advice-language guard (see explanation_service.py) - names
+# the mistake without echoing the rejected text back, since simply
+# repeating it risks Claude producing a lightly-reworded variant that
+# still trips the same guard.
+CORRECTION_NOTE = (
+    "\n\nYour previous answer was rejected: it used language that sounds "
+    "like advice, a diagnosis, an interpretation, or a judgment about "
+    "whether a result is normal or abnormal. Rewrite it as ONE short, "
+    "purely factual sentence describing only what the test measures. Do "
+    "not use any of: diagnose, diagnosis, treatment, condition, disease, "
+    "disorder, abnormal, normal range, indicate, suggest, concerning."
+)
 
-def build_explanation_prompt(canonical_test_name: str, raw_test_name: str) -> str:
-    return (
+
+def build_explanation_prompt(
+    canonical_test_name: str, raw_test_name: str, *, needs_correction: bool = False
+) -> str:
+    prompt = (
         f"Test name (standardized): {canonical_test_name}\n"
         f"Test name (as printed on the report): {raw_test_name}\n\n"
         "Explain what this test measures."
     )
+    if needs_correction:
+        prompt += CORRECTION_NOTE
+    return prompt

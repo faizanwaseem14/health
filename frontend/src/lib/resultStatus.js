@@ -1,9 +1,11 @@
 /**
  * Turns a result's raw backend flag ("low" | "normal" | "high" | null -
- * see GET /reports/:id/results) into a <StatusBadge> tone + label.
- * Never color alone: every label spells out the word AND (for high/low)
- * an arrow, on top of the badge's own icon+color - three independent
- * signals for the same meaning.
+ * see GET /reports/:id/results) into a <StatusBadge> tone + label. Only
+ * the plain word goes here - <StatusBadge> itself always renders an
+ * icon for the tone (see components/StatusBadge/StatusBadge.jsx), so a
+ * label that ALSO spells out an arrow/checkmark would show every icon
+ * twice. Icon + word + color, never color alone, but each signal is
+ * only carried once.
  *
  * flag is null whenever the report itself didn't print enough to
  * compute one (no numeric range, non-numeric value) - that's not
@@ -12,14 +14,14 @@
 export function describeResultFlag(flag) {
   switch (flag) {
     case "high":
-      return { tone: "attention", label: "↑ High" };
+      return { tone: "attention", label: "High" };
     case "low":
       // A distinct tone from "high" on purpose - amber for both would
       // mean color (and only color) was the one thing telling a
       // colorblind reader "above range" from "below range" apart.
-      return { tone: "low", label: "↓ Low" };
+      return { tone: "low", label: "Low" };
     case "normal":
-      return { tone: "good", label: "✓ Normal" };
+      return { tone: "good", label: "Normal" };
     default:
       return null;
   }

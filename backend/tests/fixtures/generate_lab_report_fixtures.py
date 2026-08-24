@@ -10,11 +10,16 @@ them. Every image is stamped with a visible
 "SYNTHETIC SAMPLE - NOT A REAL PATIENT" banner for extra clarity.
 
 Produces, into tests/fixtures/lab_reports/:
-  clear.png         - a clean, straightforward table layout
-  blurry.png         - the same report, Gaussian-blurred (a shaky photo)
-  rotated.png         - the same report, rotated ~7 degrees (a skewed photo)
-  multi_page.pdf       - a 2-page report (hematology, then chemistry panels)
-  unusual_layout.png   - a non-tabular, inline-label layout
+  clear.png              - a clean, straightforward table layout
+  blurry.png              - the same report, Gaussian-blurred (a shaky photo)
+  rotated.png              - the same report, rotated ~7 degrees (a skewed photo)
+  multi_page.pdf            - a 2-page report (hematology, then chemistry panels)
+  unusual_layout.png        - a non-tabular, inline-label layout
+  high_res_full_panel.png   - a large, high-resolution, easy-to-OCR report with
+                             an 11-test spread across three panels, including
+                             both High and Low flagged values (everything above
+                             is deliberately in-range, so this is the one to use
+                             for exercising the full range of status badges)
 
 Regenerate with:
 
@@ -54,6 +59,39 @@ _CHEMISTRY_PANEL = [
     ("Glucose", "95", "mg/dL", "70-100"),
     ("Total Cholesterol", "180", "mg/dL", "125-200"),
     ("Creatinine", "0.9", "mg/dL", "0.6-1.3"),
+]
+
+# For high_res_full_panel.png: a wider, three-section spread with
+# DELIBERATE out-of-range values (unlike the panels above, which are
+# all in-range) so the results screen's High/Low/Normal status badges
+# all have something real to show. Still entirely fabricated.
+_FULL_PANEL_SECTIONS = [
+    (
+        "Complete Blood Count (CBC)",
+        [
+            ("Hemoglobin", "10.1", "g/dL", "12.0-15.5"),  # Low
+            ("White Blood Cell Count", "12.6", "x10^3/uL", "4.0-11.0"),  # High
+            ("Platelet Count", "265", "x10^3/uL", "150-400"),
+            ("Hematocrit", "38.2", "%", "36.0-46.0"),
+        ],
+    ),
+    (
+        "Basic Metabolic Panel",
+        [
+            ("Glucose", "112", "mg/dL", "70-100"),  # High
+            ("Sodium", "139", "mmol/L", "135-145"),
+            ("Potassium", "4.1", "mmol/L", "3.5-5.1"),
+            ("Creatinine", "0.85", "mg/dL", "0.6-1.3"),
+            ("BUN", "15", "mg/dL", "7-20"),
+        ],
+    ),
+    (
+        "Lipid Panel",
+        [
+            ("Total Cholesterol", "205", "mg/dL", "125-200"),  # High
+            ("HDL Cholesterol", "38", "mg/dL", "40-60"),  # Low
+        ],
+    ),
 ]
 
 
@@ -159,6 +197,63 @@ def _draw_unusual_layout_report() -> Image.Image:
     return image
 
 
+def _draw_high_res_full_panel_report() -> Image.Image:
+    # Roughly a US-letter page at 200 DPI (8.5in x 11in) - large enough
+    # that every character is unambiguous to OCR, unlike the 900px-wide
+    # fixtures above which are deliberately modest-resolution.
+    width = 1700
+    row_count = sum(len(rows) for _, rows in _FULL_PANEL_SECTIONS)
+    section_count = len(_FULL_PANEL_SECTIONS)
+    height = 420 + row_count * 78 + section_count * 90
+
+    image = Image.new("RGB", (width, height), color="white")
+    draw = ImageDraw.Draw(image)
+
+    draw.rectangle([(0, 0), (width, 56)], fill=(255, 230, 150))
+    draw.text(
+        (24, 12),
+        "SYNTHETIC SAMPLE - NOT A REAL PATIENT",
+        fill=(120, 60, 0),
+        font=_font(30, bold=True),
+    )
+
+    draw.text(
+        (24, 90),
+        "Fixture Regional Lab (Synthetic Data)",
+        font=_font(44, bold=True),
+        fill="black",
+    )
+    draw.text(
+        (24, 150),
+        "Patient: SAMPLE PATIENT   Fixture ID: SAMPLE-0003",
+        font=_font(28),
+        fill="black",
+    )
+    draw.text((24, 188), "Report Date: 2026-03-15", font=_font(28), fill="black")
+
+    columns = [("Test", 24), ("Result", 940), ("Unit", 1160), ("Reference Range", 1360)]
+
+    y = 260
+    for section_title, rows in _FULL_PANEL_SECTIONS:
+        draw.text((24, y), section_title, font=_font(32, bold=True), fill=(40, 60, 40))
+        y += 44
+        for label, x in columns:
+            draw.text((x, y), label, font=_font(26, bold=True), fill="black")
+        y += 36
+        draw.line([(24, y), (width - 24, y)], fill="black", width=2)
+        y += 14
+
+        for test, value, unit, ref_range in rows:
+            draw.text((24, y), test, font=_font(28), fill="black")
+            draw.text((940, y), value, font=_font(28, bold=True), fill="black")
+            draw.text((1160, y), unit, font=_font(28), fill="black")
+            draw.text((1360, y), ref_range, font=_font(28), fill="black")
+            y += 56
+        y += 46
+
+    return image
+
+
 def generate_all_fixtures() -> None:
     FIXTURES_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -185,6 +280,9 @@ def generate_all_fixtures() -> None:
 
     unusual = _draw_unusual_layout_report()
     unusual.save(FIXTURES_DIR / "unusual_layout.png")
+
+    high_res_full_panel = _draw_high_res_full_panel_report()
+    high_res_full_panel.save(FIXTURES_DIR / "high_res_full_panel.png")
 
 
 if __name__ == "__main__":

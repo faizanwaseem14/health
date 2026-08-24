@@ -241,8 +241,15 @@ and the frontend:
    `backend/tests/fixtures/lab_reports/` — entirely fabricated data (a
    fake lab, fake patient label, fake values), each stamped with a
    visible "SYNTHETIC SAMPLE - NOT A REAL PATIENT" banner:
-   - `clear.png` — a clean, straightforward table layout (the easiest
-     one — good for a first end-to-end test)
+   - `high_res_full_panel.png` — large, high-resolution, and easy for
+     OCR to read with full confidence; 11 tests across three panels
+     (CBC, Basic Metabolic Panel, Lipid Panel) with a deliberate mix of
+     High, Low, and Normal values — **use this one to see every status
+     badge on the results screen**, since the other fixtures below are
+     all in-range on purpose
+   - `clear.png` — a clean, straightforward table layout, smaller and
+     lower-resolution (all values in range - good for a first
+     end-to-end test, not for seeing High/Low badges)
    - `blurry.png` — the same report, blurred (tests a poor-quality scan)
    - `rotated.png` — the same report, rotated ~7° (tests a skewed photo)
    - `unusual_layout.png` — a non-tabular, inline-label layout

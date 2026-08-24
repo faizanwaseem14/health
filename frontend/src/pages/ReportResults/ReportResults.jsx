@@ -167,7 +167,7 @@ export function ReportResults() {
             onClick={() => setIsReportVisible((visible) => !visible)}
             aria-pressed={!isReportVisible}
           >
-            {isReportVisible ? "Hide report" : "Show report"}
+            {isReportVisible ? "Hide original report" : "Show original report"}
           </Button>
         )}
       </div>
