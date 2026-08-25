@@ -5,6 +5,7 @@ import { LoadingScreen } from "../../components/LoadingScreen/LoadingScreen";
 import { useAuth } from "../../context/AuthContext";
 import { describeApiError } from "../../lib/authErrors";
 import { ReportPanel } from "./ReportPanel";
+import { SharePanel } from "./SharePanel";
 import { TestCard } from "./TestCard";
 import styles from "./ReportResults.module.css";
 
@@ -64,7 +65,7 @@ export function ReportResults() {
   const [isReportVisible, setIsReportVisible] = useState(true);
   const [isGeneratingExplanations, setIsGeneratingExplanations] = useState(false);
   const [explanationError, setExplanationError] = useState(null);
-  const [comingSoonNote, setComingSoonNote] = useState(null);
+  const [isSharePanelOpen, setIsSharePanelOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -217,15 +218,14 @@ export function ReportResults() {
             type="button"
             variant="secondary"
             size="lg"
-            onClick={() => setComingSoonNote("share")}
+            onClick={() => setIsSharePanelOpen((open) => !open)}
+            aria-expanded={isSharePanelOpen}
           >
-            Share with doctor
+            {isSharePanelOpen ? "Hide sharing" : "Share with doctor"}
           </Button>
         </div>
       )}
-      {comingSoonNote && (
-        <p className={styles.comingSoon}>Sharing reports with your doctor is coming soon.</p>
-      )}
+      {isSharePanelOpen && <SharePanel reportId={reportId} results={results} />}
 
       <Link to="/home" className={styles.homeLink}>
         Back to Home

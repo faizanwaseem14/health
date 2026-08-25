@@ -1,10 +1,13 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../../components/Button/Button";
 import { Card } from "../../components/Card/Card";
+import { Input } from "../../components/Input/Input";
 import { useAuth } from "../../context/AuthContext";
 import { describeApiError } from "../../lib/authErrors";
 import styles from "./Account.module.css";
+
+const DELETE_CONFIRMATION_WORD = "DELETE";
 
 function formatDateOfBirth(iso) {
   if (!iso) return null;
@@ -133,7 +136,47 @@ function RecoveryCodeSetting() {
   );
 }
 
+/**
+ * Permanently deletes the account and everything under it - see
+ * DELETE /auth/me on the backend for the full cascade (every profile,
+ * report, result, correction, explanation, OCR evidence, job, and
+ * share link this account owns). Typing the confirmation word is
+ * deliberately required, not just a second click - this is the one
+ * action in the whole app that can't be undone by contacting support,
+ * since there's nothing left to restore.
+ */
 function DangerZone() {
+  const { authFetch, signOut } = useAuth();
+  const navigate = useNavigate();
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [confirmationText, setConfirmationText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [error, setError] = useState(null);
+
+  const canConfirm = confirmationText.trim() === DELETE_CONFIRMATION_WORD;
+
+  function startConfirming() {
+    setConfirmationText("");
+    setError(null);
+    setIsConfirming(true);
+  }
+
+  async function handleDelete(event) {
+    event.preventDefault();
+    if (!canConfirm) return;
+
+    setIsDeleting(true);
+    setError(null);
+    try {
+      await authFetch("/auth/me", { method: "DELETE" });
+      await signOut();
+      navigate("/", { replace: true });
+    } catch (deleteError) {
+      setError(describeApiError(deleteError));
+      setIsDeleting(false);
+    }
+  }
+
   return (
     <Card className={styles.card}>
       <h2 className={styles.cardHeading}>Danger zone</h2>
@@ -141,14 +184,53 @@ function DangerZone() {
         <div>
           <p className={styles.settingLabel}>Delete account</p>
           <p className={styles.settingHint}>
-            Not available yet in the app. Contact support if you need your account and
-            data removed.
+            Permanently deletes your account and everything in it - every profile,
+            report, and result. This can't be undone.
           </p>
         </div>
-        <Button type="button" variant="ghost" size="md" disabled>
-          Delete account
-        </Button>
+        {!isConfirming && (
+          <Button type="button" variant="ghost" size="md" onClick={startConfirming}>
+            Delete account
+          </Button>
+        )}
       </div>
+
+      {isConfirming && (
+        <form className={styles.deleteConfirmBox} onSubmit={handleDelete} noValidate>
+          <p className={styles.confirmText}>
+            This deletes your account and every report, result, and correction under it,
+            right now, for good - there is no way to get it back afterward. Type{" "}
+            <strong>{DELETE_CONFIRMATION_WORD}</strong> to confirm.
+          </p>
+          <Input
+            label={`Type ${DELETE_CONFIRMATION_WORD} to confirm`}
+            value={confirmationText}
+            onChange={(event) => setConfirmationText(event.target.value)}
+            disabled={isDeleting}
+            autoComplete="off"
+          />
+          {error && <p className={styles.error}>{error}</p>}
+          <div className={styles.confirmActions}>
+            <Button
+              type="submit"
+              variant="accent"
+              size="md"
+              disabled={!canConfirm || isDeleting}
+            >
+              {isDeleting ? "Deleting…" : "Permanently delete my account"}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="md"
+              onClick={() => setIsConfirming(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
+      )}
     </Card>
   );
 }

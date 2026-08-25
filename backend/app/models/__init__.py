@@ -16,6 +16,7 @@ from app.models.report import Report
 from app.models.result import Result
 from app.models.result_ocr_word import ResultOcrWord
 from app.models.share import Share
+from app.models.share_result import ShareResult
 from app.models.test_alias import TestAlias
 from app.models.user import User
 
@@ -31,6 +32,7 @@ __all__ = [
     "Result",
     "ResultOcrWord",
     "Share",
+    "ShareResult",
     "TestAlias",
     "User",
 ]

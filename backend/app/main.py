@@ -19,7 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # error deep inside some unrelated feature.
 import app.config  # noqa: F401 (imported for this validation side-effect)
 from app.core.errors import register_exception_handlers
-from app.routers import auth, health, ocr, profiles, reports, results
+from app.routers import auth, health, ocr, profiles, reports, results, shares
 
 # Create the FastAPI application object. Everything (routes, middleware,
 # error handlers) gets attached to this single `app` object.
@@ -61,9 +61,13 @@ register_exception_handlers(app)
 # corrections (protected, ownership-checked).
 # ocr.router holds OCR evidence + page-image inspection (protected,
 # ownership-checked).
+# shares.router holds share-link management (protected, ownership-
+# checked) AND the public, no-login doctor view at GET /public/shares/
+# {token} - see app/routers/shares.py for why one router holds both.
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(profiles.router)
 app.include_router(reports.router)
 app.include_router(results.router)
 app.include_router(ocr.router)
+app.include_router(shares.router)

@@ -1,7 +1,9 @@
 """
-The `shares` table: a temporary, revocable link for sharing a profile's
-records (or a single report) with someone else, e.g. a doctor. Nothing
-creates share links yet - that's a later-day feature.
+The `shares` table: a temporary, revocable link for sharing a report
+(or a chosen subset of its results - see share_result.py) with someone
+else, e.g. a doctor, read-only and without a HealthVault account. See
+app/sharing/service.py for how a share is created and how a token
+resolves to one.
 """
 
 import uuid
@@ -23,8 +25,10 @@ class Share(Base):
         nullable=False,
         index=True,
     )
-    # If set, this share is scoped to just one report instead of the
-    # whole profile.
+    # Every share created today is scoped to exactly one report -
+    # nullable at the DB level only because a future whole-profile share
+    # was speculatively designed for here; app.sharing.service always
+    # sets it.
     report_id = Column(
         UUID(as_uuid=True), ForeignKey("reports.id", ondelete="CASCADE"), nullable=True
     )
@@ -37,6 +41,9 @@ class Share(Base):
     expires_at = Column(DateTime(timezone=True), nullable=False)
     revoked_at = Column(DateTime(timezone=True), nullable=True)
     access_count = Column(Integer, nullable=False, default=0)
+    # None = unlimited views; otherwise the share is denied once
+    # access_count reaches this.
+    max_views = Column(Integer, nullable=True)
 
     created_at = Column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

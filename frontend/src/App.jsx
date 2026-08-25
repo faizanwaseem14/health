@@ -11,6 +11,7 @@ import { Processing } from "./pages/Processing/Processing";
 import { ReportResults } from "./pages/ReportResults/ReportResults";
 import { Trends } from "./pages/Trends/Trends";
 import { OcrInspection } from "./pages/OcrInspection/OcrInspection";
+import { SharedReport } from "./pages/SharedReport/SharedReport";
 import { RequireAuth } from "./routes/RequireAuth";
 import { RequireProfile } from "./routes/RequireProfile";
 
@@ -25,6 +26,7 @@ function App() {
       <Route path="/" element={<Layout />}>
         <Route index element={<Landing />} />
         <Route path="login" element={<Login />} />
+        <Route path="shared/:token" element={<SharedReport />} />
         <Route element={<RequireAuth />}>
           <Route path="profile-setup" element={<ProfileSetup />} />
           <Route element={<RequireProfile />}>

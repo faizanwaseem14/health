@@ -1,5 +1,5 @@
 """
-Confirms the full database schema is defined correctly - all 13 tables
+Confirms the full database schema is defined correctly - all 14 tables
 exist as SQLAlchemy models, and SQLAlchemy can generate valid CREATE
 TABLE SQL for each one.
 
@@ -23,6 +23,7 @@ EXPECTED_TABLES = {
     "explanations",
     "jobs",
     "shares",
+    "share_results",
     "audit_log",
     "test_aliases",
     "otp_attempts",

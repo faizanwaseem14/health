@@ -87,6 +87,16 @@
   background: var(--color-bg-raised);
 }
 
+.deleteConfirmBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-status-attention-fg);
+  background: var(--color-bg-raised);
+}
+
 .confirmText {
   color: var(--color-text);
 }

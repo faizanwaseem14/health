@@ -9,6 +9,7 @@ that Firebase's errors get translated into our own clear exception type,
 and that a protected route correctly rejects requests with no token.
 """
 
+import uuid
 from dataclasses import replace
 from unittest.mock import MagicMock, patch
 
@@ -17,10 +18,11 @@ from fastapi.testclient import TestClient
 from firebase_admin.auth import InvalidIdTokenError
 
 from app.auth import firebase as firebase_module
-from app.auth.dependencies import resolve_or_create_user
+from app.auth.dependencies import get_current_user, get_db, resolve_or_create_user
 from app.auth.firebase import InvalidFirebaseTokenError, verify_id_token
 from app.config import settings
 from app.main import app as fastapi_app
+from app.models import User
 
 client = TestClient(fastapi_app)
 
@@ -163,3 +165,107 @@ def test_get_firebase_app_gives_a_clear_error_for_a_missing_file():
                 firebase_module._get_firebase_app()
     finally:
         firebase_module._firebase_app = None
+
+
+# --- DELETE /auth/me (account deletion) ---
+
+
+def _clear_overrides():
+    fastapi_app.dependency_overrides.clear()
+
+
+def test_delete_account_requires_login():
+    response = client.delete("/auth/me")
+
+    assert response.status_code == 401
+
+
+def test_delete_account_deletes_the_user_row_and_cleans_up_r2_and_firebase():
+    user = User(id=uuid.uuid4(), firebase_uid="fb-uid-1", phone_number="+15551234567")
+    fake_db = MagicMock()
+    query = fake_db.query.return_value.join.return_value.filter.return_value
+    query.all.return_value = [
+        MagicMock(storage_key="reports/a/1.pdf"),
+        MagicMock(storage_key="reports/a/2.pdf"),
+    ]
+
+    fastapi_app.dependency_overrides[get_current_user] = lambda: user
+    fastapi_app.dependency_overrides[get_db] = lambda: fake_db
+
+    try:
+        with (
+            patch("app.routers.auth.delete_file_bytes") as mock_delete_r2,
+            patch("app.routers.auth.delete_firebase_user") as mock_delete_firebase,
+            patch("app.routers.auth.record_audit_event") as mock_audit,
+        ):
+            response = client.delete("/auth/me")
+    finally:
+        _clear_overrides()
+
+    assert response.status_code == 200
+    assert response.json()["data"] == {"deleted": True}
+    fake_db.delete.assert_called_once_with(user)
+    fake_db.commit.assert_called_once()
+    assert mock_delete_r2.call_count == 2
+    mock_delete_r2.assert_any_call("reports/a/1.pdf")
+    mock_delete_r2.assert_any_call("reports/a/2.pdf")
+    mock_delete_firebase.assert_called_once_with("fb-uid-1")
+    # The audit trail outlives the account - user_id is None (SET NULL
+    # is what would happen to this exact row if it referenced a real
+    # user_id and that user were deleted later; here we write it that
+    # way up front since we already know it's true), never the id of a
+    # user row that's already gone by the time this is written.
+    assert mock_audit.call_args.kwargs["action"] == "delete_account"
+    assert mock_audit.call_args.kwargs["user_id"] is None
+    assert mock_audit.call_args.kwargs["resource_id"] == user.id
+
+
+def test_delete_account_still_succeeds_if_r2_cleanup_fails():
+    user = User(id=uuid.uuid4(), firebase_uid="fb-uid-2", phone_number="+15551234567")
+    fake_db = MagicMock()
+    query = fake_db.query.return_value.join.return_value.filter.return_value
+    query.all.return_value = [MagicMock(storage_key="reports/a/1.pdf")]
+
+    fastapi_app.dependency_overrides[get_current_user] = lambda: user
+    fastapi_app.dependency_overrides[get_db] = lambda: fake_db
+
+    try:
+        with (
+            patch(
+                "app.routers.auth.delete_file_bytes",
+                side_effect=RuntimeError("R2 down"),
+            ),
+            patch("app.routers.auth.delete_firebase_user"),
+            patch("app.routers.auth.record_audit_event"),
+        ):
+            response = client.delete("/auth/me")
+    finally:
+        _clear_overrides()
+
+    assert response.status_code == 200
+    fake_db.delete.assert_called_once_with(user)
+
+
+def test_delete_account_still_succeeds_if_firebase_cleanup_fails():
+    user = User(id=uuid.uuid4(), firebase_uid="fb-uid-3", phone_number="+15551234567")
+    fake_db = MagicMock()
+    query = fake_db.query.return_value.join.return_value.filter.return_value
+    query.all.return_value = []
+
+    fastapi_app.dependency_overrides[get_current_user] = lambda: user
+    fastapi_app.dependency_overrides[get_db] = lambda: fake_db
+
+    try:
+        with (
+            patch(
+                "app.routers.auth.delete_firebase_user",
+                side_effect=RuntimeError("Firebase down"),
+            ),
+            patch("app.routers.auth.record_audit_event"),
+        ):
+            response = client.delete("/auth/me")
+    finally:
+        _clear_overrides()
+
+    assert response.status_code == 200
+    fake_db.delete.assert_called_once_with(user)

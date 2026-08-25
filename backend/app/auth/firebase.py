@@ -75,6 +75,18 @@ def _get_firebase_app() -> firebase_admin.App:
     return _firebase_app
 
 
+def delete_firebase_user(uid: str) -> None:
+    """
+    Deletes the Firebase Authentication user record itself - called
+    during account deletion so the identity is genuinely gone from
+    Firebase too, not just from our own database. Signing in again
+    with the same phone number/Google account afterward creates a
+    brand new HealthVault account, with none of the old one's data.
+    """
+    app = _get_firebase_app()
+    firebase_auth.delete_user(uid, app=app)
+
+
 def verify_id_token(id_token: str) -> dict:
     """
     Verifies a Firebase ID token sent by the frontend and returns its
