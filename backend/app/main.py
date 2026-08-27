@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # ...) is missing from your .env file, the app refuses to start and tells
 # you exactly what's missing, instead of crashing later with a confusing
 # error deep inside some unrelated feature.
-import app.config  # noqa: F401 (imported for this validation side-effect)
+from app.config import settings
 from app.core.errors import register_exception_handlers
 from app.routers import auth, health, ocr, profiles, reports, results, shares
 
@@ -25,22 +25,27 @@ from app.routers import auth, health, ocr, profiles, reports, results, shares
 # error handlers) gets attached to this single `app` object.
 app = FastAPI(title="MedVault API")
 
-# The frontend (Vite dev server) runs on a different origin than this
-# API, so the browser blocks its requests unless we explicitly allow
-# them here - this is what makes "run the frontend and backend
-# together locally" actually work.
+# The frontend runs on a different origin than this API, so the browser
+# blocks its requests unless we explicitly allow them here.
 #
-# Vite picks a port on its own (5173, or the next free one - 5174,
-# 5175, ... - if that's taken), so rather than list one exact port we
-# match ANY localhost/127.0.0.1 port with a regex. This is safe to
-# leave on permanently, even in production: a browser only sends an
-# Origin header of "http://localhost:<port>" when the page actually
-# was loaded from localhost on that same machine - a real attacker's
-# site can't forge that - so this regex can never be satisfied by
-# anything other than someone's own local dev server, no matter where
-# this backend itself is deployed.
+# Two allow-lists, both active at once (a request only needs to match
+# ONE of them):
+#   - allow_origin_regex: ANY localhost/127.0.0.1 port. Vite picks a
+#     port on its own (5173, or the next free one if that's taken), so
+#     rather than list one exact port this matches all of them. Safe to
+#     leave on permanently, even in production: a browser only sends an
+#     Origin header of "http://localhost:<port>" when the page actually
+#     was loaded from localhost on that same machine - a real
+#     attacker's site can't forge that - so this can never be satisfied
+#     by anything other than someone's own local dev server, no matter
+#     where this backend itself is deployed.
+#   - allow_origins: the deployed frontend's real origin(s), from
+#     CORS_ALLOWED_ORIGINS (see app/config.py) - empty by default, so a
+#     fresh deployment fails closed (the browser blocks everything from
+#     a real origin) rather than failing open, until that's set.
 app.add_middleware(
     CORSMiddleware,
+    allow_origins=settings.cors_allowed_origins,
     allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1):\d+$",
     allow_credentials=True,
     allow_methods=["*"],

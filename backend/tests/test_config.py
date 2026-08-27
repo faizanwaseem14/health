@@ -113,3 +113,35 @@ def test_trust_confidence_threshold_is_still_overridable():
         loaded = load_settings()
 
     assert loaded.trust_confidence_threshold == 0.65
+
+
+def test_cors_allowed_origins_defaults_to_empty_when_unset():
+    with patch.dict("os.environ", {"CORS_ALLOWED_ORIGINS": ""}):
+        loaded = load_settings()
+
+    assert loaded.cors_allowed_origins == []
+
+
+def test_cors_allowed_origins_splits_a_comma_separated_list():
+    with patch.dict(
+        "os.environ",
+        {
+            "CORS_ALLOWED_ORIGINS": "https://healthvault.onrender.com,https://app.example.com"
+        },
+    ):
+        loaded = load_settings()
+
+    assert loaded.cors_allowed_origins == [
+        "https://healthvault.onrender.com",
+        "https://app.example.com",
+    ]
+
+
+def test_cors_allowed_origins_strips_whitespace_trailing_slashes_and_blanks():
+    with patch.dict(
+        "os.environ",
+        {"CORS_ALLOWED_ORIGINS": " https://healthvault.io/ , , https://x.com "},
+    ):
+        loaded = load_settings()
+
+    assert loaded.cors_allowed_origins == ["https://healthvault.io", "https://x.com"]

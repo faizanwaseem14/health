@@ -1,0 +1,165 @@
+# Render Blueprint for HealthVault: https://render.com/docs/blueprint-spec
+#
+# Defines all three services from one file so `render blueprint launch`
+# (or "New +" -> "Blueprint" in the Render dashboard, pointed at this
+# repo) creates them together, wired to each other.
+#
+# Every envVar below with `sync: false` is a real secret/URL you must
+# fill in yourself in the Render dashboard after this blueprint creates
+# the service - nothing here guesses or invents a value. See the deploy
+# checklist in the PR/commit message (or ask Claude) for exactly what
+# each one is and where to get it.
+#
+# Two entries need a value that only exists AFTER the other two
+# services are first created (the frontend's VITE_API_BASE_URL needs
+# the backend's real onrender.com URL; the backend's
+# CORS_ALLOWED_ORIGINS needs the frontend's) - both are marked
+# `sync: false` too, filled in on a short second pass after first
+# deploy. See "Deploy order" in the accompanying instructions.
+
+services:
+  # ------------------------------------------------------------------
+  # Backend API (FastAPI, Uvicorn)
+  # ------------------------------------------------------------------
+  - type: web
+    name: healthvault-backend
+    runtime: python
+    plan: starter
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    # Runs once per deploy, after the build and before the new instance
+    # starts serving traffic - the right place for schema migrations,
+    # so every deploy is automatically running against an up-to-date
+    # schema. (Requires a paid instance type, which `plan: starter`
+    # above already is.)
+    preDeployCommand: alembic upgrade head
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET_NAME
+        sync: false
+      - key: R2_ENDPOINT_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      # Render's native (non-Docker) Python runtime can't apt-get
+      # install the tesseract-ocr binary that OCR_PROVIDER=tesseract
+      # (the local default) needs - see the deploy notes. google_vision
+      # needs no system binary, only the API key below.
+      - key: OCR_PROVIDER
+        value: google_vision
+      - key: GOOGLE_VISION_API_KEY
+        sync: false
+      # Optional - has a safe default (0.7) if left unset. Uncomment to
+      # override:
+      # - key: TRUST_CONFIDENCE_THRESHOLD
+      #   value: "0.7"
+      # The deployed frontend's real origin, e.g.
+      # https://healthvault-frontend.onrender.com - only knowable once
+      # that service exists, so this is blank until the second pass.
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+
+  # ------------------------------------------------------------------
+  # Background worker (OCR + AI extraction job queue consumer)
+  # ------------------------------------------------------------------
+  - type: worker
+    name: healthvault-worker
+    runtime: python
+    plan: starter
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m app.jobs.worker
+    envVars:
+      # Same backend, same app.config validation, same required
+      # variables as the web service above (importing app.config
+      # requires every one of these to be present, whether or not this
+      # particular process happens to use it) - fill in the SAME real
+      # values here as on healthvault-backend.
+      - key: DATABASE_URL
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET_NAME
+        sync: false
+      - key: R2_ENDPOINT_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      # This IS where OCR actually runs (process_ocr_job, in this
+      # worker process) - unlike the web service, this one really does
+      # call these two at runtime, not just at config-validation time.
+      - key: OCR_PROVIDER
+        value: google_vision
+      - key: GOOGLE_VISION_API_KEY
+        sync: false
+      # - key: TRUST_CONFIDENCE_THRESHOLD
+      #   value: "0.7"
+
+  # ------------------------------------------------------------------
+  # Frontend (React + Vite static build)
+  # ------------------------------------------------------------------
+  - type: web
+    name: healthvault-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      # Render's own default Node version can be much older than this
+      # project needs (Vite 6 requires Node 18+) - pin explicitly
+      # rather than depend on whatever Render currently defaults to.
+      - key: NODE_VERSION
+        value: 22.11.0
+      # The deployed backend's real onrender.com URL - only knowable
+      # once healthvault-backend above exists (same chicken-and-egg as
+      # CORS_ALLOWED_ORIGINS). Vite bakes this in at BUILD time, so
+      # after filling this in you must trigger a manual redeploy of
+      # this service for it to take effect - just saving the value in
+      # the dashboard does not rebuild it.
+      - key: VITE_API_BASE_URL
+        sync: false
+      - key: VITE_FIREBASE_API_KEY
+        sync: false
+      - key: VITE_FIREBASE_AUTH_DOMAIN
+        sync: false
+      - key: VITE_FIREBASE_PROJECT_ID
+        sync: false
+      - key: VITE_FIREBASE_STORAGE_BUCKET
+        sync: false
+      - key: VITE_FIREBASE_MESSAGING_SENDER_ID
+        sync: false
+      - key: VITE_FIREBASE_APP_ID
+        sync: false
+    # BrowserRouter (client-side routing) means a hard refresh or a
+    # direct link to e.g. /reports/<id>/trends must still serve
+    # index.html - the SPA itself resolves the route client-side. Without
+    # this, Render's static file server 404s on every path but "/".
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

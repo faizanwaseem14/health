@@ -45,6 +45,12 @@ _ENV_SPEC = [
     ("GOOGLE_VISION_API_KEY", False),
     # --- AI extraction (Claude / Anthropic) — every processed report uses this ---
     ("ANTHROPIC_API_KEY", True),
+    # --- CORS: exact origin(s) the deployed frontend is served from ---
+    # Not required locally (the dev server is always allowed - see
+    # app/main.py's allow_origin_regex), but required in any real
+    # deployment, or the browser blocks every request the deployed
+    # frontend makes to this API.
+    ("CORS_ALLOWED_ORIGINS", False),
 ]
 
 # OCR_PROVIDER isn't a simple "present or blank" secret like the ones
@@ -87,6 +93,7 @@ class Settings:
     google_vision_api_key: str | None
     anthropic_api_key: str
     trust_confidence_threshold: float
+    cors_allowed_origins: list[str]
 
 
 def load_settings() -> Settings:
@@ -174,6 +181,19 @@ def load_settings() -> Settings:
             "Must be between 0.0 and 1.0 (inclusive).\n"
         )
 
+    # Comma-separated exact origins, e.g.
+    # "https://healthvault.onrender.com,https://app.healthvault.com" -
+    # blank entries (from a trailing comma, or the var being unset)
+    # are dropped, and a trailing slash on any origin is stripped, since
+    # the browser's Origin header never includes one and an exact-match
+    # list that silently never matches is a much harder bug to notice
+    # than a startup-time typo would be.
+    cors_allowed_origins = [
+        origin.strip().rstrip("/")
+        for origin in (values["CORS_ALLOWED_ORIGINS"] or "").split(",")
+        if origin.strip()
+    ]
+
     return Settings(
         database_url=values["DATABASE_URL"],
         firebase_service_account_json=values["FIREBASE_SERVICE_ACCOUNT_JSON"],
@@ -189,6 +209,7 @@ def load_settings() -> Settings:
         google_vision_api_key=values["GOOGLE_VISION_API_KEY"],
         anthropic_api_key=values["ANTHROPIC_API_KEY"],
         trust_confidence_threshold=trust_confidence_threshold,
+        cors_allowed_origins=cors_allowed_origins,
     )
 
 
