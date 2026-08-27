@@ -103,14 +103,21 @@ def test_list_results_requires_login():
 
 
 def test_list_results_rejects_someone_elses_report():
+    from app.models import Report
+
+    report = Report(id=uuid.uuid4(), profile_id=uuid.uuid4())
     user = User(id=uuid.uuid4())
+    fake_db = MagicMock()
+    fake_db.get.return_value = report
+    fake_db.query.return_value.filter.return_value.scalar.return_value = uuid.uuid4()
     app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[get_db] = lambda: fake_db
     try:
-        response = client.get(f"/reports/{uuid.uuid4()}/results")
+        response = client.get(f"/reports/{report.id}/results")
     finally:
         _clear_overrides()
 
-    assert response.status_code in (404, 503)
+    assert response.status_code == 404
 
 
 def test_list_results_returns_the_full_shape_for_one_result():
@@ -265,17 +272,23 @@ def test_create_correction_requires_login():
 
 
 def test_create_correction_rejects_someone_elses_result():
+    result = _fake_result()
     user = User(id=uuid.uuid4())
+    fake_db = MagicMock()
+    fake_db.get.return_value = result
+    join_chain = fake_db.query.return_value.join.return_value
+    join_chain.filter.return_value.scalar.return_value = uuid.uuid4()
     app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[get_db] = lambda: fake_db
     try:
         response = client.post(
-            f"/results/{uuid.uuid4()}/corrections",
+            f"/results/{result.id}/corrections",
             json={"field_name": "value", "new_value": "9.5"},
         )
     finally:
         _clear_overrides()
 
-    assert response.status_code in (404, 503)
+    assert response.status_code == 404
 
 
 def test_create_correction_rejects_an_uncorrectable_field():

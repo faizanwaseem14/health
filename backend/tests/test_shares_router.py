@@ -203,13 +203,20 @@ def test_revoke_share_sets_revoked_at():
 
 
 def test_revoke_share_denies_someone_elses_share():
-    # require_owned_row(Share) is what actually enforces this (already
-    # covered generically), but confirm the route is wired to it: no
-    # override at all means a real, unauthenticated-for-this-row
-    # request, so it should 404/401 rather than ever calling revoke
-    # logic.
-    response = client.delete(f"/shares/{uuid.uuid4()}")
-    assert response.status_code in (401, 404)
+    share = _make_share()
+    fake_db = MagicMock()
+    fake_db.get.return_value = share
+
+    app.dependency_overrides[get_current_user] = lambda: User(id=uuid.uuid4())
+    app.dependency_overrides[get_db] = lambda: fake_db
+
+    try:
+        response = client.delete(f"/shares/{share.id}")
+    finally:
+        _clear_overrides()
+
+    assert response.status_code == 404
+    assert share.revoked_at is None
 
 
 # --- access history ---

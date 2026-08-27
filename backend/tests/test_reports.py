@@ -121,23 +121,31 @@ def test_upload_rejects_a_file_whose_real_bytes_dont_match_its_claimed_type():
 
 def test_upload_rejects_someone_elses_profile():
     # require_owned_row already 404s for a profile you don't own
-    # (proven generically in Task 12) - this just confirms the upload
-    # route actually uses that guard rather than skipping it.
+    # (proven generically in Task 12, and again for real routes in
+    # tests/test_cross_user_security.py) - this confirms the upload
+    # route actually uses that guard rather than skipping it. NOT
+    # overriding require_owned_profile itself (the real dependency
+    # runs); db.get() returns a real profile owned by someone else, so
+    # the 404 below is the guard's own decision, not a database
+    # connection failure wearing a 404-shaped costume.
+    from app.auth.dependencies import get_db
+
     user = User(id=uuid.uuid4(), phone_number="+15551234567")
+    other_profile = Profile(id=uuid.uuid4(), user_id=uuid.uuid4(), full_name="Not You")
+    fake_db = MagicMock()
+    fake_db.get.return_value = other_profile
+
     app.dependency_overrides[get_current_user] = lambda: user
-    # Deliberately NOT overriding require_owned_profile - it will try a
-    # real (fake, localhost) database lookup and fail fast, which is a
-    # fine proxy for "not overridden" here since we only care that
-    # SOME rejection happens before any file processing.
+    app.dependency_overrides[get_db] = lambda: fake_db
     try:
         response = client.post(
-            f"/profiles/{uuid.uuid4()}/reports",
+            f"/profiles/{other_profile.id}/reports",
             files={"file": ("photo.png", _REAL_PNG_BYTES, "image/png")},
         )
     finally:
         _clear_overrides()
 
-    assert response.status_code in (404, 503)
+    assert response.status_code == 404
 
 
 def test_upload_succeeds_for_a_real_valid_png():
@@ -207,17 +215,27 @@ def test_retry_requires_login():
 
 
 def test_retry_rejects_someone_elses_report():
+    # Same shape as test_upload_rejects_someone_elses_profile above -
+    # see tests/test_cross_user_security.py for the full route-by-route
+    # sweep and why this exact pattern (a real row, owned by someone
+    # else, with the real guard NOT overridden) is what actually proves
+    # ownership rejection rather than an unrelated database failure.
+    from app.auth.dependencies import get_db
+
     user = User(id=uuid.uuid4(), phone_number="+15551234567")
+    other_report = Report(id=uuid.uuid4(), profile_id=uuid.uuid4())
+    fake_db = MagicMock()
+    fake_db.get.return_value = other_report
+    fake_db.query.return_value.filter.return_value.scalar.return_value = uuid.uuid4()
+
     app.dependency_overrides[get_current_user] = lambda: user
-    # Deliberately NOT overriding require_owned_report - same reasoning
-    # as the upload ownership test: it hits a real (fake, localhost) DB
-    # lookup and fails fast, which is a fine proxy for "not overridden".
+    app.dependency_overrides[get_db] = lambda: fake_db
     try:
-        response = client.post(f"/reports/{uuid.uuid4()}/retry")
+        response = client.post(f"/reports/{other_report.id}/retry")
     finally:
         _clear_overrides()
 
-    assert response.status_code in (404, 503)
+    assert response.status_code == 404
 
 
 def test_retry_returns_404_when_the_report_has_no_job():
@@ -314,17 +332,23 @@ def test_get_report_requires_login():
 
 
 def test_get_report_rejects_someone_elses_report():
+    # Same shape as test_retry_rejects_someone_elses_report above.
+    from app.auth.dependencies import get_db
+
     user = User(id=uuid.uuid4(), phone_number="+15551234567")
+    other_report = Report(id=uuid.uuid4(), profile_id=uuid.uuid4())
+    fake_db = MagicMock()
+    fake_db.get.return_value = other_report
+    fake_db.query.return_value.filter.return_value.scalar.return_value = uuid.uuid4()
+
     app.dependency_overrides[get_current_user] = lambda: user
-    # Same reasoning as the retry route's equivalent test: not
-    # overriding require_owned_report hits a real (fake, localhost) DB
-    # lookup and fails fast - a fine proxy for "not overridden".
+    app.dependency_overrides[get_db] = lambda: fake_db
     try:
-        response = client.get(f"/reports/{uuid.uuid4()}")
+        response = client.get(f"/reports/{other_report.id}")
     finally:
         _clear_overrides()
 
-    assert response.status_code in (404, 503)
+    assert response.status_code == 404
 
 
 def test_get_report_returns_the_reports_status_and_its_latest_job():

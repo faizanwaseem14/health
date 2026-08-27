@@ -4,7 +4,7 @@ import styles from "./ProcessingAnimation.module.css";
 const DEFAULT_MESSAGES = [
   "Reading your report…",
   "Finding the numbers…",
-  "Checking them against normal ranges…",
+  "Matching them against your report's printed ranges…",
   "Double-checking everything's accurate…",
   "Almost there…",
 ];

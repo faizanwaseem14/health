@@ -37,14 +37,19 @@ def test_list_ocr_words_requires_login():
 
 
 def test_list_ocr_words_rejects_someone_elses_report():
+    report = Report(id=uuid.uuid4(), profile_id=uuid.uuid4())
     user = User(id=uuid.uuid4())
+    fake_db = MagicMock()
+    fake_db.get.return_value = report
+    fake_db.query.return_value.filter.return_value.scalar.return_value = uuid.uuid4()
     app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[get_db] = lambda: fake_db
     try:
-        response = client.get(f"/reports/{uuid.uuid4()}/ocr-words")
+        response = client.get(f"/reports/{report.id}/ocr-words")
     finally:
         _clear_overrides()
 
-    assert response.status_code in (404, 503)
+    assert response.status_code == 404
 
 
 def test_list_ocr_words_returns_each_words_text_and_bounding_box():
@@ -92,14 +97,19 @@ def test_get_report_page_image_requires_login():
 
 
 def test_get_report_page_image_rejects_someone_elses_report():
+    report = Report(id=uuid.uuid4(), profile_id=uuid.uuid4())
     user = User(id=uuid.uuid4())
+    fake_db = MagicMock()
+    fake_db.get.return_value = report
+    fake_db.query.return_value.filter.return_value.scalar.return_value = uuid.uuid4()
     app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[get_db] = lambda: fake_db
     try:
-        response = client.get(f"/reports/{uuid.uuid4()}/pages/1")
+        response = client.get(f"/reports/{report.id}/pages/1")
     finally:
         _clear_overrides()
 
-    assert response.status_code in (404, 503)
+    assert response.status_code == 404
 
 
 def _fake_page_image():
