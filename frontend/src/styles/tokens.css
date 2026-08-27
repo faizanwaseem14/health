@@ -136,19 +136,21 @@
   --color-status-low-fg: var(--status-low-600);
   --color-status-low-bg: var(--status-low-100);
 
-  /* Trend chart marks: deliberately its own small palette, not a
-     reuse of --color-status-good-fg (green) - a chart with dozens of
-     in-range points repeats that color far more than a single status
-     badge ever does, so "in range" is a muted neutral here instead.
-     Out-of-range stays ONE color (amber) for both high and low - shape
-     (triangle up/down) carries that distinction instead, exactly as
-     the chart's own accessibility contract already relies on shape,
-     never color alone. */
-  --color-chart-line: var(--color-text-muted);
+  /* Trend chart: status is carried by COLOR here (never shape - every
+     point is the same small circle), so each of the three tiers gets
+     its own clearly distinct hue, explained in the chart's own
+     plain-word key ("What the colors mean") rather than relying on a
+     reader to infer them - that key is what keeps this accessible
+     without shape as a second channel. The line reuses the "normal"
+     teal, since most points on most charts are normal and a
+     differently-colored line would read as its own, unexplained
+     fourth category. */
+  --color-chart-line: #4a90a4;
   --color-chart-grid: var(--color-border);
-  --color-chart-range-band: var(--color-bg-sunken);
-  --color-chart-marker-in-range: var(--color-text-muted);
-  --color-chart-marker-out-of-range: var(--status-attention-600);
+  --color-chart-range-line: var(--color-text-faint);
+  --color-chart-marker-normal: #4a90a4;
+  --color-chart-marker-out: #c77d3a;
+  --color-chart-marker-severe: #c0392b;
 
   --shadow-color: 42, 36, 28;
   --shadow-sm: 0 1px 3px rgba(var(--shadow-color), 0.1);
@@ -261,6 +263,14 @@
   --color-status-pending-bg: #3a3327;
   --color-status-low-fg: #b8abe0;
   --color-status-low-bg: #332c47;
+
+  /* Same three hues as light mode, lightened for contrast against a
+     dark chart background - the same treatment every other status
+     color above gets. */
+  --color-chart-line: #7ab8c9;
+  --color-chart-marker-normal: #7ab8c9;
+  --color-chart-marker-out: #e0a165;
+  --color-chart-marker-severe: #e2685c;
 
   --shadow-color: 10, 8, 6;
   --shadow-sm: 0 1px 3px rgba(var(--shadow-color), 0.4);

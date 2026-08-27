@@ -8,6 +8,7 @@
   width: 100%;
   height: auto;
   display: block;
+  background: var(--color-bg-raised);
 }
 
 .gridline {
@@ -15,27 +16,35 @@
   stroke-width: 1;
 }
 
-.rangeBand {
-  fill: var(--color-chart-range-band);
+.rangeLine {
+  stroke: var(--color-chart-range-line);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
+
+.rangeLabel {
+  font-family: var(--font-body);
+  font-size: 10px;
+  fill: var(--color-text-faint);
 }
 
 .line {
   stroke: var(--color-chart-line);
-  stroke-width: 1.75;
+  stroke-width: 2.5;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
-.markerInRange {
-  fill: var(--color-bg-raised);
-  stroke: var(--color-chart-marker-in-range);
-  stroke-width: 1.75;
+.markerNormal {
+  fill: var(--color-chart-marker-normal);
 }
 
-.markerOutOfRange {
-  fill: var(--color-chart-marker-out-of-range);
-  stroke: var(--color-bg-raised);
-  stroke-width: 1;
+.markerOut {
+  fill: var(--color-chart-marker-out);
+}
+
+.markerSevere {
+  fill: var(--color-chart-marker-severe);
 }
 
 .axisLabel {
@@ -44,23 +53,24 @@
   fill: var(--color-text-faint);
 }
 
-.legendKey {
+.colorKey {
   display: flex;
-  gap: var(--space-5);
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.legendKeyItem {
-  display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: var(--space-2);
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
+  padding: var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-sunken);
 }
 
-.legend {
+.colorKeyHeading {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.colorKeyList {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -69,24 +79,31 @@
   margin: 0;
 }
 
-.legendRow {
+.colorKeyItem {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
+  align-items: flex-start;
   gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-sm);
-  background: var(--color-bg-sunken);
-  font-size: var(--text-sm);
-}
-
-.legendDate {
-  color: var(--color-text-muted);
-  min-width: 4.5rem;
-}
-
-.legendValue {
-  font-family: var(--font-mono);
-  font-weight: var(--weight-semibold);
   color: var(--color-text);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+}
+
+.dot {
+  flex-shrink: 0;
+  width: 0.7rem;
+  height: 0.7rem;
+  margin-top: 0.3em;
+  border-radius: 50%;
+}
+
+.dotNormal {
+  background: var(--color-chart-marker-normal);
+}
+
+.dotOut {
+  background: var(--color-chart-marker-out);
+}
+
+.dotSevere {
+  background: var(--color-chart-marker-severe);
 }
